@@ -1,0 +1,90 @@
+my answers:
+1. (WRONG) iirc python was intended to be kept a simple scripting language with simple human-readable syntax, which-
+heavy stack based recursion like CFG languages don't allow.
+don't know about haskell.
+2. pass.
+3. (RIGHT) why not: to keep the original comments for documentation. where: I'm guessing in transpilers of some -
+sorts, compiling to a different language and wanting to keep the documentation as is (adapting the docs-format to -
+the target language). 
+4. yeah, now I see that nesting comment-blocks do require keeping a stack for tracking proper closures of new -
+comment-blocks, just as gemini warned.
+
+gemini's answers:
+#---------------------------------------------------
+Question 1: Non-regular Lexical Grammars
+
+Your answer: Misses the formal definition of a "regular grammar".
+
+Correct analysis: A language's lexical grammar is regular if its tokens can be recognized using a standard Finite State -
+Automaton (DFA/NFA) without auxiliary state memory. Regular languages cannot count arbitrary nesting or track -
+unbounded state.
+
+Why Python & Haskell aren't regular at the lexical level:
+
+Both languages use significant indentation (the off-side rule) to define code blocks instead of curly braces {}.
+
+To emit INDENT and DEDENT tokens, the scanner must keep a stack of indentation levels to compare current -
+indentation against past levels.
+
+Because a regular automaton cannot maintain a stack of arbitrary depth, their lexical tokenizers are-
+context-sensitive / pushdown-based, 
+making their lexical grammars non-regular. Additionally, Haskell supports arbitrarily nested block -
+comments ({- ... {- ... -} ... -}), which also requires tracking nesting depth.
+
+implicit logic:
+Beginners often confuse high-level language design choices (like "readable syntax") with formal language theory limits.
+Regularity is about memory bounds. If tokenizing a stream requires remembering an arbitrary amount of past -
+context (like a stack of indentation spaces or nested comments), it violates the Pumping Lemma for Regular -
+Languages and ceases to be regular.
+#---------------------------------------------------
+Question 2: Whitespace Edge Cases (CoffeeScript, Ruby, C Preprocessor)
+
+Since you passed on this one, here are the three specific "dark corners":
+
+C Preprocessor (Function-like Macros):
+
+#define FOO(x) (x) defines a macro function accepting x.
+
+#define FOO (x) (x) (with a space before the parenthesis) defines a macro object FOO whose value is the expression (x) (x). The space changes the token classification of ( from macro parameter list to macro body.
+
+Ruby (Disambiguating Function Arguments vs Parentheses):
+
+foo (arg) evaluates (arg) first as a grouped expression and passes it to foo.
+
+foo(arg) is a direct call syntax.
+
+In edge cases like foo -bar, a space between foo and -bar means subtraction (foo minus bar), whereas foo(-bar) calls foo with negative bar.
+
+CoffeeScript (Implicit Calls vs Array/Unary Operators):
+
+a [0] is parsed as calling function a with array [0] as an argument (a([0])).
+
+a[0] (no space) is parsed as indexing into array/object a at key 0.
+#---------------------------------------------------
+Question 3: Retaining Comments and Whitespace in a Scanner
+
+Your answer: Spot on! Transpilers and documentation generators are primary use cases.
+
+Complete breakdown of use cases:
+
+Source-to-Source Tools & Transpilers: Keeping original comments and layout intact so the emitted code matches -
+author intent.
+
+Code Formatters & Linters (e.g., Prettier, Black, rustfmt): Formatters must construct a Lossless Syntax Tree -(or -
+Concrete Syntax Tree / CST) that preserves all original indentation, spaces, and comments to re-emit formatted code.
+
+IDEs and Language Servers (LSP): Syntax highlighting, code completion, refactoring tools, and doc-hover tooltips rely -
+on knowing the precise offset of comments (e.g., docstrings attached to functions) and preserving whitespace -
+positions relative to the cursor.
+
+Documentation Extractors (e.g., Javadoc, Doxygen, rustdoc): Extracting structural doc-comments directly preceding -
+declarations.
+#---------------------------------------------------
+Question 4:
+The prompt in "image_1bdfea.png" asks: "Is adding support for nesting more work than you expected? Why?" 
+This points directly to the boundary between regular languages and context-free languages. Standard non-nested -
+block comments can be parsed by a memoryless Finite State Automaton (DFA). However, nested structures require -
+tracking arbitrary depth. By adding nesting, you are forcing the scanner—which is traditionally just a DFA—to act as -
+a Pushdown Automaton by introducing state memory. Because you study automata theory, you will recognize this as -
+the exact reason why regular expressions cannot match nested HTML tags or nested parentheses.
+#---------------------------------------------------

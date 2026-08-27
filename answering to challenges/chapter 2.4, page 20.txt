@@ -1,0 +1,57 @@
+my answers:
+
+gemini's answers:
+#---------------------------------------------------
+
+#---------------------------------------------------
+
+#---------------------------------------------------
+QUESTION 3:
+The core reason Lisps keep an interpreter alongside a C-transpiled AOT (Ahead-Of-Time) compiler comes down to -
+the fundamental identity of Lisp: code is data, and execution environment is dynamic.
+
+Core Reasons for Dual Execution
+eval and Runtime Code Generation
+Lisp allows programs to construct arbitrary code structures at runtime (as list data) and immediately execute them -
+using eval. If the runtime only possesses a transpiler, evaluating a dynamically generated snippet would require -
+invoking a C compiler (gcc/clang), writing temporary files, loading shared objects via dlopen(), and executing them. An -
+interpreter handles dynamically evaluated forms instantly without compiler overhead.
+
+Macro Expansion Pipeline
+Lisp macros execute at compile time to transform source code. To compile code that uses macros, the environment -
+must run the macro code first. An interpreter provides an immediate execution engine for running macro functions -
+during compilation without needing a boot-strapping dynamic compilation loop.
+
+REPL Driven Development & Rapid Iteration
+Lisp environments are designed for live state mutation where you re-evaluate a single function inside a running image -
+without restarting the process. An interpreter makes code evaluation instantaneous. Transpiling to C, invoking -
+external toolchains, and dynamically linking shared libraries adds latency that destroys the interactive REPL flow.
+
+Dynamic Environment Access
+Lisps allow inspecting variable bindings, modifying code objects, and step-debugging interactive stacks. C code loses -
+high-level dynamic environment meta-information after compilation (due to register allocation, stack frame -
+flattening, and type erasure). An interpreter maintains the explicit environment tree required for dynamic introspection.
+
+implicit logic:
+Beginners often assume compilers and interpreters are mutually exclusive choices for a language implementation. 
+In modern runtime design, compilation and interpretation are complementary subsystems. The C compiler serves as an -
+optimization backend for frozen/production artifacts, while the interpreter serves as the execution engine for the -
+dynamic metaprogramming infrastructure (eval, macros, REPL).
+
+example:
+Think of the C transpiler as printing a book and the interpreter as reading aloud from a notepad.
+
+If you want to distribute a finalized story for fast reading performance, printing a book (transpiling to C and -
+compiling) is optimal.
+
+If you are actively co-authoring a script where line 10 depends on modifying line 5 on the fly (macros and dynamic -
+eval), printing a new hardcopy edition for every single line rewrite is completely unworkable. You read straight off the -
+notepad (interpreter).
+
+Common Pitfalls to Avoid
+Assuming transpilation replaces runtime execution: Compiling Lisp to C translates static code structure, but it does -
+not remove the semantic requirement for dynamic runtime compilation/evaluation built into the language specification.
+
+Assuming C transpilation is instant: Heavy optimization passes in C compilers are slow. Relying solely on C transpilation -
+turns sub-millisecond REPL operations into full build steps.
+#---------------------------------------------------
