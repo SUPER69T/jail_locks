@@ -2,7 +2,7 @@ package jail_lock;
 
 class Token {
   final TokenType type;
-  final String lexeme;
+  final String lexeme; // terminal symbolic representation.
   final Object literal;
   final int line;
 

@@ -10,22 +10,22 @@ package toy_code_and_examples;
  */
 public class visitor_pattern_example_code__Pastry {
     public static void main(String[] args) {
-        // this entire block is resolved at runtime:
         //---
         // initialized data object:
         Pastry b = new Beignet(5, 300); // p is the data (class-type).
 
         // initialized behavior object:
-        PastryVisitor eater = new PastryEater(); // 'eater' is the (visitor-method type).
+        PastryVisitor eater = new PastryEater(); // 'eater' is the (visitor-function-class type).
 
-        // performing the double-dispatch runtime dynamic lookup:
+        // performing double-dispatch:
         b.accept(eater);
         //---
 
         // initializing another data object:
         Pastry c = new Cruller(8, 225);
 
-        // activating that same initialized 'behavior' (function) from the double-dispatch lookup:
+        // activating that same initialized 'behavior' (function-class), using =>
+        // 'double-dispatch' lookup again:
         c.accept(eater);
         //---
     }
@@ -33,7 +33,9 @@ public class visitor_pattern_example_code__Pastry {
 
 //-----
 abstract class Pastry {
-    abstract void accept(PastryVisitor visitor);
+    abstract void accept(PastryVisitor visitor); // =>
+    // the abstract base 'element'-class forces all inheriting 'element'-classes =>
+    // to inherit the 'accept' overridden runtime-resolved method.
 }
 //---
 class Beignet extends Pastry {
@@ -46,7 +48,7 @@ class Beignet extends Pastry {
     }
     @Override
     void accept(PastryVisitor visitor) {
-        visitor.visitBeignet(this); // this refers to the current 'Beignet'-class instance.
+        visitor.visitBeignet(this); // 'this' refers to the current 'Beignet'-class instance.
     }
 }
 class Cruller extends Pastry {
@@ -59,19 +61,25 @@ class Cruller extends Pastry {
     }
     @Override
     void accept(PastryVisitor visitor) {
-        visitor.visitCruller(this); // this refers to the current 'Cruller'-class instance.
+        visitor.visitCruller(this); // 'this' refers to the current 'Cruller'-class instance.
     }
 }
 //-----
 
 //-----
-interface PastryVisitor {
+interface PastryVisitor { // =>
+    // an interface for all 'visitor-function'-classes, that's forcing =>
+    // the overloading behavior of resolving exact overloaded functions =>
+    // for all possible passed 'element'-classes at compile time (vtable =>
+    // 'array of function-pointers'-offset resolution at compile time).
     void visitBeignet(Beignet beignet);
     void visitCruller(Cruller cruller);
 }
 //---
+// visitor-class declaration example:
 class PastryEater implements PastryVisitor {
-    // This is where your actual logic lives
+    // runtime-evaluated functions (of type-'PastryEater', matching each =>
+    // object inheriting from "Pastry"):
     @Override
     public void visitBeignet(Beignet beignet) {
         System.out.println("Eating a powdered Beignet with " + beignet.sugar_amount + " amounts of sugar!");
