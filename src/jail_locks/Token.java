@@ -1,4 +1,4 @@
-package jail_lock;
+package jail_locks;
 
 class Token {
   final TokenType type;

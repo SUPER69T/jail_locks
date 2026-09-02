@@ -1,4 +1,4 @@
-package jail_lock;
+package jail_locks;
 
 enum TokenType {
   // Single-character tokens.

@@ -1,4 +1,4 @@
-package jail_lock;
+package jail_locks;
 
 /**
 * print the AST in reverse-polish-notation.

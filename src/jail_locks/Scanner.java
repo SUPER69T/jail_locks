@@ -1,4 +1,4 @@
-package jail_lock;
+package jail_locks;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,11 +7,9 @@ import java.util.Map;
 
 // imports for the challenge:
 //---
-import java.util.Deque;
-import java.util.ArrayDeque;
 //---
 
-import static jail_lock.TokenType.*;
+import static jail_locks.TokenType.*;
 
 class Scanner {
   private final String source;
