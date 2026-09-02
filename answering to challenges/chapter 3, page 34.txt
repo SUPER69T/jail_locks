@@ -1,0 +1,8 @@
+my answers:
+
+2. is lox gonna have raw loops or for-each loop expressions? -probably raw, since both C and java do raw, it's easier =>
+to implement.
+#---------------------------------------------------
+3. the biggest one has to be lacking containers. having to use workarounds like manually constructing  recursive =>
+ADTs makes using operations on lists/arrays borderline torture. 
+#---------------------------------------------------

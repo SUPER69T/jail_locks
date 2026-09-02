@@ -1,0 +1,56 @@
+my answers:
+1.
+original notation:
+expr => expr ( "(" ( expr ( "," expr )* )? ")" | "." IDENTIFIER )+ | IDENTIFIER | NUMBER
+                   |_____________________A_____________________|
+                           |_______B_______|
+                                    |___C___|
+                                    
+my attempt of desugaring the EBNF's: "|" / "*" / "+" / "(" + ")" - notations to make a BNF ("" is the empty terminal):
+expr => expr  |_A_|                                                          |-----------------------------------------------------------------| (using "|") 
+expr => IDENTIFIER                                                    |-----------------------------------------------------------------|
+expr => NUMBER                                                            |-----------------------------------------------------------------|
+|_A_| => "(" |_B_| ")"                                                       |----------------------------------| (using "|") | (using "+") |
+|_A_| => "." IDENTIFIER                                              |                                        |                 |                  |
+    |_B_| =>  expr |_C_|                                                    |------------------| (using "?") |                 |                  |
+    |_B_| => ""                                                                  |-----------------|                   |                |                  |
+        |_C_| => "," expr |_C_|                                              |--| (using "*") |                  |                 |                 |
+        |_C_| => ""                                                               |--|--------------|---------------|---------------|--------------|
+        
+bonus question:        
+(WRONG) I think this just produces the normal BNF form. 
+corrected answer: the grammer rules actually encodes chained function calls and property accesses.
+#---------------------------------------------------
+2.
+(WRONG) assumed tht robert is asking about monads in functional-programming languages...
+#---------------------------------------------------
+gemini's answers:
+1.
+located and helped fix a right-recursive rule mistake I made with |_A_|, in an already left-recursive expression in =>
+expr => expr  |_A_|, which introduced ambiguity.
+
+bonus question:   
+This grammar encodes chained function calls and property accesses.
+It allows you to parse sequences like:
+
+foo (IDENTIFIER)
+
+foo.bar (Property access)
+
+foo(a, b) (Function call)
+
+getObj().properties.calculate(x, y) (The + operator allowing infinite chaining of both types on a single base expression).
+#---------------------------------------------------
+2.
+The Functional "Visitor Pattern"
+To bundle operations onto one type and make adding new types easy in a functional language, you must abandon standard =>
+Algebraic Data Types and pattern matching. Instead, you build mechanisms that couple state and behavior together:
+
+The Scheme/Lisp approach (Message Passing): You create a constructor function that holds private state within a closure =>
+and returns a secondary dispatcher function. This dispatcher takes a command (a "message" like 'area or 'perimeter) and =>
+routes it to the correct internal calculation. You are manually building a vtable using closures.
+
+The Haskell approach (Type Classes): You define a Type Class (an interface) grouping the required operations. When you =>
+define a new data type, you instantiate the Type Class for it, completely encapsulating the type's specific behaviors in one =>
+place without modifying existing functions.
+#---------------------------------------------------
