@@ -24,10 +24,49 @@ class Parser {
   }
 
     private Expr expression() {
-    return equality();
+    return comma();
+  }
+  // challenges:
+  // comma (left-associative) + ternary (right-associative).
+  //---
+  private Expr comma() {
+    Token ProductionErrorToken = match(COMMA) ? previous() : null;
+
+    Expr expr = ternary();
+
+    while (match(COMMA)) {
+      Token operator = previous();
+      Expr right = ternary();
+      expr = new Expr.Binary(expr, operator, right);
+    }
+
+    if (ProductionErrorToken != null) {
+      Lox.error(ProductionErrorToken,
+              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
+    }
+
+    return expr;
   }
 
+  private Expr ternary() { // tried to add error-production to the ternary operator, but it's just =>
+    // way to complicated to keep both expressions around the ':' token, and make it still make =>
+    // sense for a future optimizer / resolver to use it properly... I GIVE UP!
+
+    Expr expr = equality();
+    if (match(QUESTION)) {
+      Token question = previous();
+      Expr middle = expression();
+      Token colon = consume(COLON, "Expected a colon: ':', after question-operator: '?'");
+      Expr right = ternary();
+      return new Expr.Ternary(expr, question, middle, colon, right);
+    }
+    return expr;
+  }
+  //---
+
   private Expr equality() {
+    Token ProductionErrorToken = match(BANG_EQUAL, EQUAL_EQUAL) ? previous() : null;
+
     Expr expr = comparison();
 
     while (match(BANG_EQUAL, EQUAL_EQUAL)) {
@@ -36,10 +75,18 @@ class Parser {
       expr = new Expr.Binary(expr, operator, right);
     }
 
-    return expr;
+    if (ProductionErrorToken != null) {
+      Lox.error(ProductionErrorToken,
+              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
+    }
+
+    return expr; // returning 'expr' even if an error-production was found, for the =>
+    // 'resolver' section to have a bigger AST to check scopes.
   }
 
   private Expr comparison() {
+    Token ProductionErrorToken = match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) ? previous() : null;
+
     Expr expr = term();
 
     while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
@@ -48,10 +95,17 @@ class Parser {
       expr = new Expr.Binary(expr, operator, right);
     }
 
+    if (ProductionErrorToken != null) {
+      Lox.error(ProductionErrorToken,
+              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
+    }
+
     return expr;
   }
 
   private Expr term() {
+    Token ProductionErrorToken = match(MINUS, PLUS) ? previous() : null;
+
     Expr expr = factor();
 
     while (match(MINUS, PLUS)) {
@@ -60,16 +114,28 @@ class Parser {
       expr = new Expr.Binary(expr, operator, right);
     }
 
+    if (ProductionErrorToken != null) {
+      Lox.error(ProductionErrorToken,
+              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
+    }
+
     return expr;
   }
 
   private Expr factor() {
+    Token ProductionErrorToken = match(SLASH, STAR) ? previous() : null;
+
     Expr expr = unary();
 
     while (match(SLASH, STAR)) {
       Token operator = previous();
       Expr right = unary();
       expr = new Expr.Binary(expr, operator, right);
+    }
+
+    if (ProductionErrorToken != null) {
+      Lox.error(ProductionErrorToken,
+              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
     }
 
     return expr;
@@ -96,11 +162,11 @@ class Parser {
 
     if (match(LEFT_PAREN)) {
       Expr expr = expression();
-      consume(RIGHT_PAREN, "Expect ')' after expression.");
+      consume(RIGHT_PAREN, "Expected ')'");
       return new Expr.Grouping(expr);
     }
 
-    throw error(peek(), "Expect expression.");
+    throw error(peek(), "Expected an expression");
   }
 
   private boolean match(TokenType... types) {
@@ -114,7 +180,11 @@ class Parser {
     return false;
   }
 
-  private Token consume(TokenType type, String message) {
+  /**
+  * 'consume' is mainly used to advance, but also throw errors with specific messages:
+  */
+  @SuppressWarnings("CanIgnoreReturnValue") // istg bro, i ain't learning no java for the death of me.
+   private Token consume(TokenType type, String message) { // ignore
     if (check(type)) return advance();
 
     throw error(peek(), message);

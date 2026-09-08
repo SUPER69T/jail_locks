@@ -1,4 +1,21 @@
 my answers:
+1. the grammar with the comma-precedence:
+-----lowest-----:
+expression   → comma
+comma        → equality ( "," equality )*;
+equality      → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term          → factor ( ( "-" | "+" ) factor )* ;
+factor        → unary ( ( "/" | "*" ) unary )* ;
+unary         → ( "!" | "-" ) unary
+                 | primary ;
+primary      → NUMBER | STRING | "true" | "false" | "nil"
+                 | "(" expression ")" ;
+-----highest-----
+
+2.
+the precedence level allowed  between the "?" and ":" is as low as it gets meaning =>
+we allow any expression to be nested within the 'middle' and 'right' parts of the operator.
 
 gemini's answers:
 #---------------------------------------------------

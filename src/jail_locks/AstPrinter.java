@@ -8,10 +8,16 @@ class AstPrinter implements Expr.Visitor<String> {
     return expr.accept(this);
   }
 
-   @Override
+  @Override
   public String visitBinaryExpr(Expr.Binary expr) {
     return parenthesize(expr.operator.lexeme,
                         expr.left, expr.right);
+  }
+
+  @Override
+  public String visitTernaryExpr(Expr.Ternary expr) {
+    return parenthesize(expr.question.lexeme,
+                        expr.left, expr.middle, expr.right);
   }
 
   @Override

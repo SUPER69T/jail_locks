@@ -12,9 +12,10 @@ public class GenerateAst {
 //      System.exit(64);
 //    }
 //  String outputDir = args[0];
-    String outputDir = "src/jail_lock"; // I just hardcoded that shit.
+    String outputDir = "src/jail_locks"; // I just hardcoded that shit.
     defineAst(outputDir, "Expr", Arrays.asList(
       "Binary   : Expr left, Token operator, Expr right",
+      "Ternary   : Expr left, Token question, Expr middle, Token colon, Expr right",
       "Grouping : Expr expression",
       "Literal  : Object value",
       "Unary    : Token operator, Expr right"
@@ -25,7 +26,7 @@ public class GenerateAst {
     String path = outputDir + "/" + baseName + ".java";
     PrintWriter writer = new PrintWriter(path, "UTF-8");
 
-    writer.println("package jail_lock;");
+    writer.println("package jail_locks;");
     writer.println();
     writer.println("import java.util.List;");
     writer.println();

@@ -1,7 +1,5 @@
 package jail_locks;
 
-import java.util.List;
-
 abstract class Expr {
   interface Visitor<R> {
     R visitBinaryExpr(Binary expr);
@@ -26,6 +24,9 @@ abstract class Expr {
     final Token operator;
     final Expr right;
   }
+
+  // for the ternary operator challenge:
+  //---
   static class Ternary extends Expr {
     Ternary(Expr left, Token question, Expr middle, Token colon, Expr right) {
       this.left = left;
@@ -46,6 +47,7 @@ abstract class Expr {
     final Token colon;
     final Expr right;
   }
+
   static class Grouping extends Expr {
     Grouping(Expr expression) {
       this.expression = expression;
