@@ -74,63 +74,116 @@ class Interpreter implements Expr.Visitor<Object> {
     Object left = evaluate(expr.left);
     Object right = evaluate(expr.right);
 
-      return switch (expr.operator.type) {
-          //--------------------------
-          case GREATER -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left > (double) right;
-          }
-          case GREATER_EQUAL -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left >= (double) right;
-          }
-          case LESS -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left < (double) right;
-          }
-          case LESS_EQUAL -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left <= (double) right;
-          }
-          //--------------------------
-          case BANG_EQUAL -> !isEqual(left, right);
-          case EQUAL_EQUAL -> isEqual(left, right);
-          //--------------------------
-          case MINUS -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left - (double)right;
-          }
-          case PLUS -> {
-            if (left instanceof Double && right instanceof Double) {
-              yield (double)left + (double)right;
-            }
-
-            if (left instanceof String && right instanceof String) {
-              yield (String)left + (String)right;
-            }
-
-            throw new RuntimeError(expr.operator,
-            "Operands must be two numbers or two strings.");
-          }
-          case SLASH -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left / (double)right;
-          }
-          case STAR -> {
-            checkNumberOperands(expr.operator, left, right);
-            yield (double)left * (double)right;
-          }
-          //--------------------------
-          default ->
-            // Unreachable.
-            null;
+    return switch (expr.operator.type) {
+        //--------------------------
+        // challenge:
+        // implementing lexical string comparisons in lox:
+        //---
+        case GREATER -> {
+        if (left instanceof Double && right instanceof Double) {
+          yield (double)left > (double) right;
+        }
+        else if (left instanceof String && right instanceof String) {
+          yield ((String) left).compareTo((String)right) > 0;
+        }
+        throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
+        }
+        case GREATER_EQUAL -> {
+        if (left instanceof Double && right instanceof Double) {
+          yield (double)left > (double) right;
+        }
+        else if (left instanceof String && right instanceof String) {
+          yield ((String) left).compareTo((String)right) >= 0;
+        }
+        throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
+        }
+        case LESS -> {
+        if (left instanceof Double && right instanceof Double) {
+          yield (double)left > (double) right;
+        }
+        else if (left instanceof String && right instanceof String) {
+          yield ((String) left).compareTo((String)right) < 0;
+        }
+        throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
+        }
+        case LESS_EQUAL -> {
+        if (left instanceof Double && right instanceof Double) {
+          yield (double)left > (double) right;
+        }
+        else if (left instanceof String && right instanceof String) {
+          yield ((String) left).compareTo((String)right) <= 0;
+        }
+        throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
+        }
+        //---
+        //--------------------------
+        case BANG_EQUAL -> !isEqual(left, right);
+        case EQUAL_EQUAL -> isEqual(left, right);
+        //--------------------------
+        case MINUS -> {
+        checkNumberOperands(expr.operator, left, right);
+        yield (double)left - (double)right;
+        }
+        case PLUS -> {
+        if (left instanceof Double && right instanceof Double) {
+          yield (double)left + (double)right;
+        }
+        if (left instanceof String && right instanceof String) {
+          yield (String)left + (String)right;
+        }
+        // challenge:
+        // auto-conversion on: string + (otherType) concatenation.
+        // java already support this type of auto-conversion on "+" =>
+        // operations with a string operand...:
+        //---
+        if (left instanceof String && right instanceof Double) {
+          yield left + stringify(right);
+        }
+        if (left instanceof Double && right instanceof String) {
+          yield stringify(left) + right;
+        }
+        if (left instanceof String && right instanceof Boolean) {
+          yield (String)left + right;
+        }
+        if (left instanceof Boolean && right instanceof String) {
+          yield left + (String)right;
+        }
+        //
+        throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
+        }
+        //---
+        case SLASH -> {
+        checkNumberOperands(expr.operator, left, right);
+        // challenge:
+        // implemented both cases of division by - '0' just in case =>
+        // we would want to return different values or different error messages:
+        //---
+        if ((Double)left == 0 && (Double)right == 0) { // '0' / '0'
+          throw new RuntimeError(expr.operator,
+        "Tried dividing a '0' by '0'.");
+        }
+        if ((Double)right == 0) { // 'scalar' / '0'
+          throw new RuntimeError(expr.operator,
+        "Tried dividing a scalar number by '0'.");
+        }
+        //---
+        yield (double)left / (double)right;
+        }
+        case STAR -> {
+        checkNumberOperands(expr.operator, left, right);
+        yield (double)left * (double)right;
+        }
+        //--------------------------
+        default ->
+        // Unreachable.
+        null;
       };
   }
 
   private void checkNumberOperands(Token operator, Object left, Object right) {
     if (left instanceof Double && right instanceof Double) return;
 
-    throw new RuntimeError(operator, "Operands must be numbers.");
+    throw new RuntimeError(operator, "Operands must both either be numbers or strings.");
   }
 
   private boolean isEqual(Object a, Object b) {

@@ -7,6 +7,7 @@ import java.util.Map;
 
 // imports for the challenge:
 //---
+import java.util.ArrayDeque;
 //---
 
 import static jail_locks.TokenType.*;
@@ -116,41 +117,41 @@ class Scanner {
 
         // challenge:
         //---
-        //else if (match('*')){
-        //  ArrayDeque<Character> stack = new ArrayDeque<>(); // using a stack to track =>
-        //  // closures and new openings of comment blocks (I know this is overkill and =>
-        //  // simply be done using a counter (int), but I really wanted to show the =>
-        //  // individual tracking of both characters the way they are being inputted):
-        //  stack.push('/');
-        //  stack.push('*');
-        //
-        //  while (!stack.isEmpty() && !isAtEnd()) {
-        //    char current = advance();
-        //    char next = peek();
-        //
-        //    if (current == '\n') {
-        //      line++;
-        //      continue;
-        //    }
-        //    else if (current == '*') {
-        //      if (next == '/') {
-        //        stack.pop(); // pops '*'.
-        //        stack.pop(); // pops '/'.
-        //        advance();
-        //      }
-        //    }
-        //    else if (current == '/') {
-        //      if (next == '*') {
-        //        stack.push('/'); // pushes '/'.
-        //        stack.push('*'); // pushes '*'.
-        //        advance();
-        //      }
-        //    }
-        //  }
-        //  if (!stack.isEmpty()) {
-        //    Lox.error(line, "comment-block isn't closed properly.");
-        //  }
-        //}
+        else if (match('*')){
+          ArrayDeque<Character> stack = new ArrayDeque<>(); // using a stack to track =>
+          // closures and new openings of comment blocks (I know this is overkill and =>
+          // simply be done using a counter (int), but I really wanted to show the =>
+          // individual tracking of both characters the way they are being inputted):
+          stack.push('/');
+          stack.push('*');
+
+          while (!stack.isEmpty() && !isAtEnd()) {
+            char current = advance();
+            char next = peek();
+
+            if (current == '\n') {
+              line++;
+              continue;
+            }
+            else if (current == '*') {
+              if (next == '/') {
+                stack.pop(); // pops '*'.
+                stack.pop(); // pops '/'.
+                advance();
+              }
+            }
+            else if (current == '/') {
+              if (next == '*') {
+                stack.push('/'); // pushes '/'.
+                stack.push('*'); // pushes '*'.
+                advance();
+              }
+            }
+          }
+          if (!stack.isEmpty()) {
+            Lox.error(line, "comment-block isn't closed properly.");
+          }
+        }
         //---
 
         else {

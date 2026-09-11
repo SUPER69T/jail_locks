@@ -15,7 +15,31 @@ primary      → NUMBER | STRING | "true" | "false" | "nil"
 
 2.
 the precedence level allowed  between the "?" and ":" is as low as it gets meaning =>
-we allow any expression to be nested within the 'middle' and 'right' parts of the operator.
-
-gemini's answers:
+we allow any expression to be nested within the 'middle' part of the operator.
+the same cannot be said about the right side of the ":", as it's precedence only allows =>
+"ternary" rules and higher precedence, to help these complex expressions be as =>
+unambiguous as possible. 
+----------------------------------
+bad precedence example (right side allows "expression"-level precedence and higher):
+(a ? b : c , d) is parsed into: 
+       ?:  
+   a  b  ,
+         c  d
+which violates the intended AST precedence by putting the comma operator lower =>
+than the ternary operator, which means the comma operator has a higher precedence =>
+than the ternary (WRONG).
+----------------------------------
+good precedence example (right side allows "equality"-level precedence and higher):
+(a ? b : c , d) is parsed into: 
+       ,  
+  ?:      d
+a b c
+which keeps the correct AST precedence.
+----------------------------------
+the whole ternary operator is right associative to allow recursive construction of =>
+multiple operators of this form:
+a ? b : c ? d : e, which is correctly parsed into: 
+          ?:
+   a     b     ?:
+             c  d  e
 #---------------------------------------------------

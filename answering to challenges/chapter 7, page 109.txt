@@ -1,0 +1,62 @@
+my answers:
+1.
+didn't know how other languages compare it, so left this one for gemini to answer.
+
+3.
+what happens:
+java prints "Infinity" on: (scalar / 0) divisions, and "NaN" on: (0 / 0).
+what should happen is what I know that happens in all programming languages I've used so far, which is a dedicated =>
+error / exception being thrown, indicating an illegal division-operation has occurred, with the proper details being provided.
+this is the right way of handling these sort of edge cases, since division by 0 can easily cause catastrophic failures and =>
+undefined behavior in useful programs.
+
+so turns out java doesn't throw the exceptions / errors I thought it did when using the floating-point ADT:
+#---
+"Why Floating-Point Division Doesn't Throw an ErrorJava strictly adheres to the IEEE 754 floating-point specification. 
+This international standard mandates how computers must handle decimal math, and it requires that division by zero =>
+return a specific geometric symbolic value rather than crashing the program. 
+Why? Floating-point math is designed for complex scientific, engineering, and graphical computations. 
+In these scenarios, encountering a boundary limit like infinity is quite common. Automatically crashing the system every =>
+time a number gets too close to zero would make complex math pipelines incredibly fragile and difficult to write. 
+The hardware level: Integers do not have a binary representation for "infinity". 
+However, the IEEE 754 standard reserves explicit binary patterns specifically to represent Infinity, -Infinity, and NaN."
+#---
+#---------------------------------------------------
+gemini's answers:
+#---------------------------------------------------
+1.
+Here is how different language paradigms handle comparisons across types:
+
+1) String vs. String (Homogeneous)
+Almost all modern languages (Python, Java, C#, and JS) allow strings to be compared to other strings.
+
+How it works: It uses lexicographical (alphabetical) ordering based on underlying character codes (like ASCII or Unicode).
+"apple" < "banana" evaluates to true.
+
+Justification: This is highly practical. If you don't support string comparisons at the language level, users cannot easily =>
+write algorithms to alphabetize lists or sort data.
+
+2) Mixed Types (Heterogeneous, e.g., 3 < "pancake")
+This is where language philosophies violently diverge.
+
+The JavaScript Way (Implicit Coercion): JS attempts to convert types on the fly. "3" < 4 converts the string to a =>
+number and evaluates to true. However, "pancake" < 3 converts "pancake" into NaN (Not a Number). In JS, any =>
+relational comparison with NaN evaluates to false.
+
+implicit logic: JavaScript was designed for the early web, where a crashed script meant a completely broken webpage. 
+Its core heuristic was "keep running at all costs." It prioritizes uptime over logical correctness. It assumes the =>
+programmer knows what they are doing, rather than throwing an error, which heavily obscures logic flaws.
+
+The Python 3 / Ruby Way (Strong Dynamic Typing): If you attempt 3 < "pancake", the interpreter immediately halts =>
+and throws a TypeError. (Fun fact: Python 2 actually allowed this, sorting heterogeneous objects by the alphabetical =>
+name of their types—since "int" comes before "string", 3 < "pancake" was true. It caused so much confusion they =>
+explicitly removed it in Python 3).
+
+The Java / C++ Way (Static Typing): The compiler flags it as a type mismatch and refuses to compile the code in the =>
+first place.
+
+analogy:
+Allowing mixed-type comparisons is like being asked to sort a shelf containing books, shoes, and coffee mugs by =>
+"alphabetical order." You can invent an arbitrary rule to force it to work, but the underlying premise is logically flawed. 
+It is almost always safer for the system to reject the request and demand the user clarify their intent.
+#---------------------------------------------------
