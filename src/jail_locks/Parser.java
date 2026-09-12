@@ -38,6 +38,7 @@ class Parser {
 
   private Stmt statement() {
     if (match(PRINT)) return printStatement();
+    if (match(LEFT_BRACE)) return new Stmt.Block(block());
 
     return expressionStatement();
   }
@@ -66,8 +67,38 @@ class Parser {
     return new Stmt.Expression(expr);
   }
 //-----------------------------------------------------
+  private List<Stmt> block() {
+    List<Stmt> statements = new ArrayList<>();
+
+    while (!check(RIGHT_BRACE) && !isAtEnd()) {
+      statements.add(declaration());
+    }
+
+    consume(RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
+  }
+//-----------------------------------------------------
   private Expr expression() {
-    return comma();
+    return assignment();
+  }
+//-----------------------------------------------------
+  private Expr assignment() {
+    Expr expr = comma();
+
+    if (match(EQUAL)) {
+      Token comma = previous();
+      Expr value = assignment();
+
+      if (expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable)expr).name;
+        return new Expr.Assign(name, value);
+      }
+
+      error(comma, "Invalid assignment target."); // we don’t throw a 'ParseError' because =>
+      // the parser isn’t in a confused state where we need to go into panic mode and synchronize.
+    }
+
+    return expr;
   }
 //-----------------------------------------------------
   // challenges:
@@ -204,6 +235,10 @@ class Parser {
       return new Expr.Literal(previous().literal);
     }
 
+    if (match(IDENTIFIER)) {
+      return new Expr.Variable(previous());
+    }
+
     if (match(LEFT_PAREN)) {
       Expr expr = expression();
       consume(RIGHT_PAREN, "Expected ')'");
@@ -260,6 +295,9 @@ class Parser {
     return tokens.get(current - 1);
   }
 
+  /**
+   * @return ParseError()
+   */
   private ParseError error(Token token, String message) {
     Lox.error(token, message);
     return new ParseError();

@@ -16,6 +16,7 @@ public class GenerateAst {
 
     // generating the 'Expr' abstract class:
     defineAst(outputDir, "Expr", Arrays.asList(
+      "Assign   : Token name, Expr value",
       "Binary   : Expr left, Token operator, Expr right",
       "Ternary   : Expr left, Token question, Expr middle, Token colon, Expr right",
       "Grouping : Expr expression",
@@ -26,6 +27,7 @@ public class GenerateAst {
 
     // generating the 'Stmt' abstract class:
     defineAst(outputDir, "Stmt", Arrays.asList(
+      "Block      : List<Stmt> statements",
       "Expression : Expr expression",
       "Print      : Expr expression",
       "Var        : Token name, Expr initializer"
