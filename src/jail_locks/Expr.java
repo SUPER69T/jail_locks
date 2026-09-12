@@ -3,13 +3,19 @@ package jail_locks;
 import java.util.List;
 
 abstract class Expr {
+//----------------------------------
   interface Visitor<R> {
     R visitBinaryExpr(Binary expr);
     R visitTernaryExpr(Ternary expr);
     R visitGroupingExpr(Grouping expr);
     R visitLiteralExpr(Literal expr);
     R visitUnaryExpr(Unary expr);
+    R visitVariableExpr(Variable expr);
   }
+
+  abstract <R> R accept(Visitor<R> visitor);
+//----------------------------------
+//-------------Binary:
   static class Binary extends Expr {
     Binary(Expr left, Token operator, Expr right) {
       this.left = left;
@@ -26,6 +32,8 @@ abstract class Expr {
     final Token operator;
     final Expr right;
   }
+//----------------------------------
+//-------------Ternary:
   static class Ternary extends Expr {
     Ternary(Expr left, Token question, Expr middle, Token colon, Expr right) {
       this.left = left;
@@ -46,6 +54,8 @@ abstract class Expr {
     final Token colon;
     final Expr right;
   }
+//----------------------------------
+//-------------Grouping:
   static class Grouping extends Expr {
     Grouping(Expr expression) {
       this.expression = expression;
@@ -58,6 +68,8 @@ abstract class Expr {
 
     final Expr expression;
   }
+//----------------------------------
+//-------------Literal:
   static class Literal extends Expr {
     Literal(Object value) {
       this.value = value;
@@ -70,6 +82,8 @@ abstract class Expr {
 
     final Object value;
   }
+//----------------------------------
+//-------------Unary:
   static class Unary extends Expr {
     Unary(Token operator, Expr right) {
       this.operator = operator;
@@ -84,6 +98,19 @@ abstract class Expr {
     final Token operator;
     final Expr right;
   }
+//----------------------------------
+//-------------Variable:
+  static class Variable extends Expr {
+    Variable(Token name) {
+      this.name = name;
+    }
 
-  abstract <R> R accept(Visitor<R> visitor);
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitVariableExpr(this);
+    }
+
+    final Token name;
+  }
+//----------------------------------
 }

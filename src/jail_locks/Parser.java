@@ -1,5 +1,6 @@
 package jail_locks;
 
+import java.util.ArrayList;
 import java.util.List;
 
 // importing all TokenTypes:
@@ -15,17 +16,60 @@ class Parser {
     this.tokens = tokens;
   }
 
-  Expr parse() {
+  List<Stmt> parse() {
+    List<Stmt> statements = new ArrayList<>();
+    while (!isAtEnd()) {
+      statements.add(declaration()); // start of recursive descent.
+    }
+
+    return statements;
+  }
+
+  private Stmt declaration() {
     try {
-      return expression();
+      if (match(VAR)) return varDeclaration();
+
+      return statement();
     } catch (ParseError error) {
+      synchronize();
       return null;
     }
   }
 
-    private Expr expression() {
+  private Stmt statement() {
+    if (match(PRINT)) return printStatement();
+
+    return expressionStatement();
+  }
+
+  private Stmt printStatement() {
+    Expr value = expression();
+    consume(SEMICOLON, "Expect ';' after value.");
+    return new Stmt.Print(value);
+  }
+
+  private Stmt varDeclaration() {
+    Token name = consume(IDENTIFIER, "Expect variable name.");
+
+    Expr initializer = null;
+    if (match(EQUAL)) {
+      initializer = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after variable declaration.");
+    return new Stmt.Var(name, initializer);
+  }
+
+  private Stmt expressionStatement() {
+    Expr expr = expression();
+    consume(SEMICOLON, "Expect ';' after expression.");
+    return new Stmt.Expression(expr);
+  }
+//-----------------------------------------------------
+  private Expr expression() {
     return comma();
   }
+//-----------------------------------------------------
   // challenges:
   // comma (left-associative) + ternary (right-associative).
   //---
@@ -47,7 +91,7 @@ class Parser {
 
     return expr;
   }
-
+//-----------------------------------------------------
   private Expr ternary() { // tried to add error-production to the ternary operator, but it's just =>
     // way to complicated to keep both expressions around the ':' token, and make it still make =>
     // sense for a future optimizer / resolver to use it properly... I GIVE UP!
@@ -63,7 +107,7 @@ class Parser {
     return expr;
   }
   //---
-
+//-----------------------------------------------------
   private Expr equality() {
     Token ProductionErrorToken = match(BANG_EQUAL, EQUAL_EQUAL) ? previous() : null;
 
@@ -83,7 +127,7 @@ class Parser {
     return expr; // returning 'expr' even if an error-production was found, for the =>
     // 'resolver' section to have a bigger AST to check scopes.
   }
-
+//-----------------------------------------------------
   private Expr comparison() {
     Token ProductionErrorToken = match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) ? previous() : null;
 
@@ -102,7 +146,7 @@ class Parser {
 
     return expr;
   }
-
+//-----------------------------------------------------
   private Expr term() {
     Token ProductionErrorToken = match(MINUS, PLUS) ? previous() : null;
 
@@ -121,7 +165,7 @@ class Parser {
 
     return expr;
   }
-
+//-----------------------------------------------------
   private Expr factor() {
     Token ProductionErrorToken = match(SLASH, STAR) ? previous() : null;
 
@@ -140,7 +184,7 @@ class Parser {
 
     return expr;
   }
-
+//-----------------------------------------------------
   private Expr unary() {
     if (match(BANG, MINUS)) {
       Token operator = previous();
@@ -150,7 +194,7 @@ class Parser {
 
     return primary();
   }
-
+//-----------------------------------------------------
   private Expr primary() {
     if (match(FALSE)) return new Expr.Literal(false);
     if (match(TRUE)) return new Expr.Literal(true);
@@ -168,7 +212,11 @@ class Parser {
 
     throw error(peek(), "Expected an expression");
   }
+//-----------------------------------------------------
 
+//-----------------------------------------------------
+// HELPER FUNCTIONS:
+//-----------------------------------------------------
   private boolean match(TokenType... types) {
     for (TokenType type : types) {
       if (check(type)) {
@@ -238,7 +286,7 @@ class Parser {
       advance();
     }
   }
-
+//-----------------------------------------------------
 }
 
 

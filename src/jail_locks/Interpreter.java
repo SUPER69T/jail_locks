@@ -1,17 +1,25 @@
 package jail_locks;
 
-class Interpreter implements Expr.Visitor<Object> {
+import java.util.List;
+
+class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
-  void interpret(Expr expression) {
+  void interpret(List<Stmt> statements) {
     try {
-      Object value = evaluate(expression);
-      System.out.println(stringify(value));
+      for (Stmt statement : statements) {
+        execute(statement);
+      }
     } catch (RuntimeError error) {
       Lox.runtimeError(error);
     }
   }
 
-  private Object evaluate(Expr expr) {
+  private void execute(Stmt stmt) {
+    stmt.accept(this); // 'this' refers to the 'Interpreter' instance.
+  }
+
+  private Object evaluate(Expr expr) { // 'evaluate' gets called by =>
+    // the Stmt visitor methods, as described in lox's EBNF grammar rules.
     return expr.accept(this);
   }
 
@@ -30,8 +38,26 @@ class Interpreter implements Expr.Visitor<Object> {
   }
 //-----------------------------------------------------
   @Override
+  public Void visitExpressionStmt(Stmt.Expression stmt) {
+    evaluate(stmt.expression);
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitPrintStmt(Stmt.Print stmt) {
+    Object value = evaluate(stmt.expression);
+    System.out.println(stringify(value));
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
   public Object visitLiteralExpr(Expr.Literal expr) {
     return expr.value;
+  }
+//-----------------------------------------------------
+  @Override
+  public Object visitVariableExpr(Expr.Variable expr) {
+    return environment.get(expr.name);
   }
 //-----------------------------------------------------
   @Override

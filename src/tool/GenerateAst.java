@@ -13,12 +13,22 @@ public class GenerateAst {
 //    }
 //  String outputDir = args[0];
     String outputDir = "src/jail_locks"; // I just hardcoded that shit.
+
+    // generating the 'Expr' abstract class:
     defineAst(outputDir, "Expr", Arrays.asList(
       "Binary   : Expr left, Token operator, Expr right",
       "Ternary   : Expr left, Token question, Expr middle, Token colon, Expr right",
       "Grouping : Expr expression",
       "Literal  : Object value",
-      "Unary    : Token operator, Expr right"
+      "Unary    : Token operator, Expr right",
+      "Variable : Token name"
+    ));
+
+    // generating the 'Stmt' abstract class:
+    defineAst(outputDir, "Stmt", Arrays.asList(
+      "Expression : Expr expression",
+      "Print      : Expr expression",
+      "Var        : Token name, Expr initializer"
     ));
   }
 
@@ -31,19 +41,23 @@ public class GenerateAst {
     writer.println("import java.util.List;");
     writer.println();
     writer.println("abstract class " + baseName + " {");
+    writer.println("//----------------------------------");
 
+    // 'Visitor' interface enforcing specific method calls to each subclass of base ('Expr'/'Stmt'):
     defineVisitor(writer, baseName, types);
+
+    // The base accept() method.
+    writer.println();
+    writer.println("  abstract <R> R accept(Visitor<R> visitor);");
+    writer.println("//----------------------------------");
 
     // The AST classes.
     for (String type : types) {
       String className = type.split(":")[0].trim(); // "Binary", "Grouping", "Literal", "Unary.
       String fields = type.split(":")[1].trim(); // for Binary: "Expr left, Token operator, Expr right"
       defineType(writer, baseName, className, fields);
+      writer.println("//----------------------------------");
     }
-
-    // The base accept() method.
-    writer.println();
-    writer.println("  abstract <R> R accept(Visitor<R> visitor);");
 
     writer.println("}");
     writer.close();
@@ -62,6 +76,7 @@ public class GenerateAst {
   }
 
   private static void defineType(PrintWriter writer, String baseName, String className, String fieldList) {
+    writer.println("//-------------" + className + ":");
     writer.println("  static class " + className + " extends " +
         baseName + " {");
 
