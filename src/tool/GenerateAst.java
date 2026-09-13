@@ -30,6 +30,7 @@ public class GenerateAst {
       "Block      : List<Stmt> statements",
       "Expression : Expr expression",
       "Print      : Expr expression",
+      "Exit       : None",
       "Var        : Token name, Expr initializer"
     ));
   }
@@ -57,6 +58,10 @@ public class GenerateAst {
     for (String type : types) {
       String className = type.split(":")[0].trim(); // "Binary", "Grouping", "Literal", "Unary.
       String fields = type.split(":")[1].trim(); // for Binary: "Expr left, Token operator, Expr right"
+      // defining a statement that takes no input parameters:
+      if (fields.equals("None")) {
+        fields = "";
+      }
       defineType(writer, baseName, className, fields);
       writer.println("//----------------------------------");
     }
@@ -86,10 +91,13 @@ public class GenerateAst {
     writer.println("    " + className + "(" + fieldList + ") {");
 
     // Store parameters in fields.
-    String[] fields = fieldList.split(", ");
-    for (String field : fields) {
-      String name = field.split(" ")[1]; // for Binary: "left", "operator", "right"
-      writer.println("      this." + name + " = " + name + ";");
+    String[] fields = new String[0];
+    if (!fieldList.isEmpty()) {
+      fields = fieldList.split(", ");
+      for (String field : fields) {
+        String name = field.split(" ")[1]; // for Binary: "left", "operator", "right"
+        writer.println("      this." + name + " = " + name + ";");
+      }
     }
 
     writer.println("    }");
