@@ -8,6 +8,7 @@ abstract class Stmt {
     R visitBlockStmt(Block stmt);
     R visitExpressionStmt(Expression stmt);
     R visitPrintStmt(Print stmt);
+    R visitExitStmt(Exit stmt);
     R visitVarStmt(Var stmt);
   }
 
@@ -53,6 +54,18 @@ abstract class Stmt {
     }
 
     final Expr expression;
+  }
+//----------------------------------
+//-------------Exit:
+  static class Exit extends Stmt {
+    Exit() {
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitExitStmt(this);
+    }
+
   }
 //----------------------------------
 //-------------Var:

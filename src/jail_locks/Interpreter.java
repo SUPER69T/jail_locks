@@ -3,9 +3,13 @@ package jail_locks;
 import java.util.List;
 
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
-//-----------------------------------------------------
   private Environment environment = new Environment();
+  private final boolean isRepl;
 
+  Interpreter(boolean isRepl) {
+    this.isRepl = isRepl;
+  }
+//-----------------------------------------------------
   void interpret(List<Stmt> statements) {
     try {
       for (Stmt statement : statements) {
@@ -16,19 +20,31 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
   }
 
+  /**
+  * execute a Stmt.
+  */
   private void execute(Stmt stmt) {
     stmt.accept(this); // 'this' refers to the 'Interpreter' instance.
   }
 
+  /**
+  * evaluate an Expr.
+  */
   private Object evaluate(Expr expr) { // 'evaluate' gets called when an expression's =>
     // value is required, as described in lox's EBNF grammar rules.
     return expr.accept(this);
   }
-
 //-----------------------------------------------------
+  /**
+  * in REPL mode: evaluates the statement-expression and prints it to stdout.
+  * in non-REPL mode (script): only evaluates the expression.
+  */
   @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
-    evaluate(stmt.expression);
+    Object temp = evaluate(stmt.expression);
+    if (isRepl && temp != null) {
+      System.out.println(stringify(temp));
+    }
     return null;
   }
 //-----------------------------------------------------
@@ -70,6 +86,12 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
   @Override
+    public Void visitExitStmt(Stmt.Exit stmt) {
+        System.exit(0);
+        return null;
+    }
+//-----------------------------------------------------
+  @Override
   public Object visitAssignExpr(Expr.Assign expr) {
     Object value = evaluate(expr.value);
     environment.assign(expr.name, value);
@@ -77,13 +99,13 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
   @Override
-  public Object visitLiteralExpr(Expr.Literal expr) {
-    return expr.value;
+  public Object visitVariableExpr(Expr.Variable expr) {
+    return environment.get(expr.name);
   }
 //-----------------------------------------------------
   @Override
-  public Object visitVariableExpr(Expr.Variable expr) {
-    return environment.get(expr.name);
+  public Object visitLiteralExpr(Expr.Literal expr) {
+    return expr.value;
   }
 //-----------------------------------------------------
   @Override
@@ -100,20 +122,6 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
           // Unreachable.
           null;
     };
-  }
-
-  /**
-  * defines what boolean values does jlox primitives / objects(?) return.
-  */
-  private boolean isTruthy(Object object) {
-    if (object == null) return false;
-    if (object instanceof Boolean) return (boolean)object;
-    return true;
-  }
-
-  private void checkNumberOperand(Token operator, Object operand) {
-    if (operand instanceof Double) return;
-    throw new RuntimeError(operator, "Operand must be a number.");
   }
 //-----------------------------------------------------
   @Override
@@ -231,19 +239,6 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         null;
       };
   }
-
-  private void checkNumberOperands(Token operator, Object left, Object right) {
-    if (left instanceof Double && right instanceof Double) return;
-
-    throw new RuntimeError(operator, "Operands must both either be numbers or strings.");
-  }
-
-  private boolean isEqual(Object a, Object b) {
-    if (a == null && b == null) return true;
-    if (a == null) return false;
-
-    return a.equals(b);
-  }
 //-----------------------------------------------------
   @Override
   public Object visitTernaryExpr(Expr.Ternary expr) {
@@ -276,6 +271,33 @@ private String stringify(Object object) {
     }
 
     return object.toString();
+  }
+
+  /**
+  * defines what boolean values does jlox primitives / objects(?) return.
+  */
+  private boolean isTruthy(Object object) {
+    if (object == null) return false;
+    if (object instanceof Boolean) return (boolean)object;
+    return true;
+  }
+
+  private void checkNumberOperand(Token operator, Object operand) {
+    if (operand instanceof Double) return;
+    throw new RuntimeError(operator, "Operand must be a number.");
+  }
+
+  private void checkNumberOperands(Token operator, Object left, Object right) {
+    if (left instanceof Double && right instanceof Double) return;
+
+    throw new RuntimeError(operator, "Operands must both either be numbers or strings.");
+  }
+
+  private boolean isEqual(Object a, Object b) {
+    if (a == null && b == null) return true;
+    if (a == null) return false;
+
+    return a.equals(b);
   }
 //-----------------------------------------------------
 }
