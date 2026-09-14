@@ -1,5 +1,6 @@
 package jail_locks;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -103,19 +104,44 @@ class Parser {
   * existing variable within the environments-hierarchy.
   */
   private Expr assignment() {
+    Token first_token = peek();
+    boolean valid_first = (first_token.type != PLUS && first_token.type != PLUS_EQUAL);
+
     Expr expr = comma();
 
-    if (match(EQUAL)) {
-      Token comma = previous();
-      Expr value = assignment(); // makes the parsing rule right-recursive.
+    if (valid_first) {
+      if (first_token.type == EQUAL) {
+        Token comma = previous();
+        Expr value = assignment(); // makes the parsing rule right-recursive.
 
-      if (expr instanceof Expr.Variable) {
-        Token name = ((Expr.Variable)expr).name;
-        return new Expr.Assign(name, value);
+        if (expr instanceof Expr.Variable) {
+          Token name = ((Expr.Variable) expr).name;
+          return new Expr.Assign(name, value);
+        }
+
+        var _ = error(comma, "Invalid assignment target before the" + "'" + first_token + "' Token"); // we don’t throw a 'ParseError' because =>
+        // the parser isn’t in a confused state where we need to go into panic mode and synchronize.
+
+      } else if (first_token.type == PLUS_EQUAL) {
+        Token comma = previous();
+        //Expr.Binary(expr, operator, right)
+        Expr value = assignment(); // makes the parsing rule right-recursive.
+
+        if (expr instanceof Expr.Variable) {
+          Token name = ((Expr.Variable) expr).name;
+          value = new Expr.Binary((Expr.Variable) expr, PLUS, value);
+          // a += b += 6;
+          return new Expr.Assign(name, value);
+        }
+
+        error(comma, "Invalid assignment target before the" + "'" + first_token + "' Token"); // we don’t throw a 'ParseError' because =>
+        // the parser isn’t in a confused state where we need to go into panic mode and synchronize.
       }
+    }
 
-      error(comma, "Invalid assignment target."); // we don’t throw a 'ParseError' because =>
-      // the parser isn’t in a confused state where we need to go into panic mode and synchronize.
+    else {
+      Lox.error(first_token,
+              "Expected a left-expression before the " + "'" + first_token + "' Token");
     }
 
     return expr;
@@ -273,6 +299,8 @@ class Parser {
 //-----------------------------------------------------
 // HELPER FUNCTIONS:
 //-----------------------------------------------------
+
+  /// scanning all passed token-types for whether they equal to the current token-type (advances in case of equal).
   private boolean match(TokenType... types) {
     for (TokenType type : types) {
       if (check(type)) {
@@ -284,9 +312,7 @@ class Parser {
     return false;
   }
 
-  /**
-  * 'consume' is mainly used to advance, but also throw errors with specific messages:
-  */
+  /// 'consume' is mainly used to advance, but also throw errors with specific messages.
   @SuppressWarnings("CanIgnoreReturnValue") // istg bro, i ain't learning no java for the death of me.
    private Token consume(TokenType type, String message) { // ignore
     if (check(type)) return advance();
@@ -294,11 +320,13 @@ class Parser {
     throw error(peek(), message);
   }
 
+  /// @return a comparison of the passed-in token-type, with the current token-type (without advancing).
   private boolean check(TokenType type) {
     if (isAtEnd()) return false;
     return peek().type == type;
   }
 
+  /// advances the token and returns the previous token (the token which just was the current).
   private Token advance() {
     if (!isAtEnd()) current++;
     return previous();
@@ -308,22 +336,23 @@ class Parser {
     return peek().type == EOF;
   }
 
+  /// @return the current token.
   private Token peek() {
     return tokens.get(current);
   }
 
+  /// @return the previous token.
   private Token previous() {
     return tokens.get(current - 1);
   }
 
-  /**
-   * @return ParseError()
-   */
+  /// @return ParseError().
   private ParseError error(Token token, String message) {
     Lox.error(token, message);
     return new ParseError();
   }
 
+  /// winds forward until the first ';' or statement is matched.
   private void synchronize() {
     advance();
 
@@ -339,6 +368,7 @@ class Parser {
         case WHILE:
         case PRINT:
         case RETURN:
+        case EXIT:
           return;
       }
 

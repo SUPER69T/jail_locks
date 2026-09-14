@@ -15,7 +15,7 @@ block        → "{" declaration* "}" ;
 
 
 expression   → assignment ;
-assignment   → IDENTIFIER "=" assignment
+assignment   → IDENTIFIER ( "=" | "+=" ) assignment;
              | comma ;
 comma        → ternary ( "," ternary )*;
 ternary      → equality "?" expression ":" ternary

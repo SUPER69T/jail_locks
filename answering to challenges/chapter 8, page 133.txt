@@ -1,0 +1,19 @@
+my answers:
+3.
+"What did you expect it to do?"  -logically, exactly what it did. I also went over the sequence of operations in my head =>
+before I ran the code and did expect it to print 3, which it did, which is pretty cool. and now it makes me wanna =>
+implement the '+=' operator for quicker incrementation of variables of Double/String types in Lox.
+
+"Is it what you think it should do?" -yeah. it makes perfect sense, and is exactly right with how I know other =>
+programming languages to behave when doing this sort of plus operation with assignment.
+in-case the robert asks specifically about the shadowing of variable a WHILE using that same a to assign and =>
+increment that inner a variable: I still think it's correct, and may just feel familiar to me cause of python or smth idk.
+
+"What does analogous code in other languages you are familiar with do?" -as I said, python does the exact same thing.
+not sure of other languages, but honestly this doesn't seem like a big deal, since in a language that allows variable =>
+shadowing like python, you can just split both operations in this line on their own to make it make more sense. idk.
+
+"What do you think users will expect this to do?" -exactly that, but honestly, who cares about users who don't like what =>
+python does in these sorts of more simple python behavioral operations. I'm not a huge python fanboy, but I do agree =>
+that it nailed some of the more basic syntactic parts of working with dynamic variables, in the means of writing code =>
+really really fast and keeping that flow going.

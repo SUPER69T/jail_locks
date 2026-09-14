@@ -81,9 +81,11 @@ class Scanner {
       case '-':
         addToken(MINUS);
         break;
+      //--------------------------
       case '+':
-        addToken(PLUS);
+        addToken(match('=') ? PLUS_EQUAL : PLUS);
         break;
+      //--------------------------
       case ';':
         addToken(SEMICOLON);
         break;
