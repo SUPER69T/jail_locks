@@ -45,6 +45,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     if (isRepl && temp != null) {
       System.out.println(stringify(temp));
     }
+
     return null;
   }
 //-----------------------------------------------------
@@ -55,11 +56,18 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     return null;
   }
 //-----------------------------------------------------
+
+  /**
+  * for defining new variables in the current environment.
+  */
   @Override
   public Void visitVarStmt(Stmt.Var stmt) {
     Object value = null;
     if (stmt.initializer != null) {
       value = evaluate(stmt.initializer);
+    }
+    else {
+      value = Environment.UNINITIALIZED;
     }
 
     environment.define(stmt.name.lexeme, value);
@@ -71,8 +79,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     executeBlock(stmt.statements, new Environment(environment));
     return null;
   }
-  void executeBlock(List<Stmt> statements,
-                    Environment environment) {
+  void executeBlock(List<Stmt> statements, Environment environment) {
     Environment previous = this.environment;
     try {
       this.environment = environment;
@@ -98,6 +105,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     return value;
   }
 //-----------------------------------------------------
+  /**
+  * for fetching an existing variable's value.
+  */
   @Override
   public Object visitVariableExpr(Expr.Variable expr) {
     return environment.get(expr.name);

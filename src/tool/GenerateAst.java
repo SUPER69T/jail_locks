@@ -92,7 +92,8 @@ public class GenerateAst {
 
     // Store parameters in fields.
     String[] fields = new String[0];
-    if (!fieldList.isEmpty()) {
+    if (!fieldList.isEmpty()) { // checking whether the visitor-method =>
+      // has fields and skipping in case it doesn't.
       fields = fieldList.split(", ");
       for (String field : fields) {
         String name = field.split(" ")[1]; // for Binary: "left", "operator", "right"

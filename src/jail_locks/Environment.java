@@ -7,6 +7,9 @@ class Environment {
   final Environment enclosing;
   private final Map<String, Object> values = new HashMap<>();
 
+  // symbolizes the value of a variable that hasn't been initialized yet:
+  public static final Object UNINITIALIZED = new Object();
+
   Environment() {
     enclosing = null;
   }
@@ -16,7 +19,10 @@ class Environment {
 
   Object get(Token name) {
     if (values.containsKey(name.lexeme)) {
-      return values.get(name.lexeme);
+      Object value = values.get(name.lexeme);
+      if (value != UNINITIALIZED) {return value;}
+      throw new RuntimeError(name,
+        "Tried accessing an uninitialized variable '" + name.lexeme + "'.");
     }
 
     if (enclosing != null) return enclosing.get(name); // recursive lookup in the =>

@@ -16,6 +16,9 @@ class Parser {
     this.tokens = tokens;
   }
 
+//---------------------------------------------------------------
+// HERE STARTS THE 'program -> expression' AST abstraction layer:
+//---------------------------------------------------------------
   List<Stmt> parse() {
     List<Stmt> statements = new ArrayList<>();
     while (!isAtEnd()) {
@@ -24,7 +27,7 @@ class Parser {
 
     return statements;
   }
-
+//-----------------------------------------------------
   private Stmt declaration() {
     try {
       if (match(VAR)) return varDeclaration();
@@ -35,20 +38,24 @@ class Parser {
       return null;
     }
   }
-
+//-----------------------------------------------------
   private Stmt statement() {
     if (match(PRINT)) return printStatement();
     if (match(LEFT_BRACE)) return new Stmt.Block(block());
     if (match(EXIT)) return new Stmt.Exit();
     return expressionStatement();
   }
-
+//-----------------------------------------------------
   private Stmt printStatement() {
     Expr value = expression();
     consume(SEMICOLON, "Expect ';' after value.");
     return new Stmt.Print(value);
   }
-
+//-----------------------------------------------------
+  /**
+  * @RETURNS: a node representing the declaration-statement
+  * of a new variable in the environments-hierarchy.
+  */
   private Stmt varDeclaration() {
     Token name = consume(IDENTIFIER, "Expect variable name.");
 
@@ -60,13 +67,18 @@ class Parser {
     consume(SEMICOLON, "Expect ';' after variable declaration.");
     return new Stmt.Var(name, initializer);
   }
-
+//-----------------------------------------------------
   private Stmt expressionStatement() {
     Expr expr = expression();
     consume(SEMICOLON, "Expect ';' after expression.");
     return new Stmt.Expression(expr);
   }
 //-----------------------------------------------------
+
+  /**
+   * @return a list of all declarations within the new "{'...'}" scope =>
+   * for the visitBlockStmt to execute within the new inner-environment.
+   */
   private List<Stmt> block() {
     List<Stmt> statements = new ArrayList<>();
 
@@ -77,17 +89,25 @@ class Parser {
     consume(RIGHT_BRACE, "Expect '}' after block.");
     return statements;
   }
-//-----------------------------------------------------
+
+//---------------------------------------------------------------
+// HERE STARTS THE 'expression -> primary' AST abstraction layer:
+//---------------------------------------------------------------
   private Expr expression() {
     return assignment();
   }
 //-----------------------------------------------------
+
+  /**
+  * @RETURNS: a node representing an assignment of a value to an
+  * existing variable within the environments-hierarchy.
+  */
   private Expr assignment() {
     Expr expr = comma();
 
     if (match(EQUAL)) {
       Token comma = previous();
-      Expr value = assignment();
+      Expr value = assignment(); // makes the parsing rule right-recursive.
 
       if (expr instanceof Expr.Variable) {
         Token name = ((Expr.Variable)expr).name;
@@ -235,6 +255,7 @@ class Parser {
       return new Expr.Literal(previous().literal);
     }
 
+    //
     if (match(IDENTIFIER)) {
       return new Expr.Variable(previous());
     }
