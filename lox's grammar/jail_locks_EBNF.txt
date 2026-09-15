@@ -14,10 +14,10 @@ printStmt    → "print" expression ";" ;
 block        → "{" declaration* "}" ;
 
 
-expression   → assignment ;
-assignment   → IDENTIFIER ( "=" | "+=" ) assignment;
-             | comma ;
-comma        → ternary ( "," ternary )*;
+expression   → comma ;
+comma        → assignment ( "," assignment )*;
+assignment   → IDENTIFIER ( "=" | "+=" ) assignment
+             | ternary ;
 ternary      → equality "?" expression ":" ternary
              | equality
 equality     → comparison ( ( "!=" | "==" ) comparison )* ;

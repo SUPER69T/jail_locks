@@ -32,9 +32,8 @@ class Parser {
   private Stmt declaration() {
     try {
       if (match(VAR)) return varDeclaration();
-
       return statement();
-    } catch (ParseError error) {
+    } catch (ParseError e) {
       synchronize();
       return null;
     }
@@ -49,7 +48,7 @@ class Parser {
 //-----------------------------------------------------
   private Stmt printStatement() {
     Expr value = expression();
-    consume(SEMICOLON, "Expect ';' after value.");
+    consume(SEMICOLON, "Expect ';' after value");
     return new Stmt.Print(value);
   }
 //-----------------------------------------------------
@@ -58,20 +57,20 @@ class Parser {
   * of a new variable in the environments-hierarchy.
   */
   private Stmt varDeclaration() {
-    Token name = consume(IDENTIFIER, "Expect variable name.");
+    Token name = consume(IDENTIFIER, "Expect variable name");
 
     Expr initializer = null;
     if (match(EQUAL)) {
       initializer = expression();
     }
 
-    consume(SEMICOLON, "Expect ';' after variable declaration.");
+    consume(SEMICOLON, "Expect ';' after variable declaration");
     return new Stmt.Var(name, initializer);
   }
 //-----------------------------------------------------
   private Stmt expressionStatement() {
     Expr expr = expression();
-    consume(SEMICOLON, "Expect ';' after expression.");
+    consume(SEMICOLON, "Expect ';' after expression");
     return new Stmt.Expression(expr);
   }
 //-----------------------------------------------------
@@ -87,7 +86,7 @@ class Parser {
       statements.add(declaration());
     }
 
-    consume(RIGHT_BRACE, "Expect '}' after block.");
+    consume(RIGHT_BRACE, "Expect '}' after block");
     return statements;
   }
 
@@ -95,80 +94,62 @@ class Parser {
 // HERE STARTS THE 'expression -> primary' AST abstraction layer:
 //---------------------------------------------------------------
   private Expr expression() {
-    return assignment();
+    return comma();
   }
 //-----------------------------------------------------
+  // challenge - comma (left-associative):
+  //---
+  private Expr comma() {
+    Expr expr = assignment();
 
+    while (match(COMMA)) {
+      Token operator = previous();
+      Expr right = assignment();
+      expr = new Expr.Binary(expr, operator, right);
+    }
+    return expr;
+  }
+  //---
+//-----------------------------------------------------
   /**
   * @RETURNS: a node representing an assignment of a value to an
   * existing variable within the environments-hierarchy.
   */
   private Expr assignment() {
-    Token first_token = peek();
-    boolean valid_first = (first_token.type != PLUS && first_token.type != PLUS_EQUAL);
-
-    Expr expr = comma();
-
-    if (valid_first) {
-      if (first_token.type == EQUAL) {
-        Token comma = previous();
-        Expr value = assignment(); // makes the parsing rule right-recursive.
-
-        if (expr instanceof Expr.Variable) {
-          Token name = ((Expr.Variable) expr).name;
-          return new Expr.Assign(name, value);
-        }
-
-        var _ = error(comma, "Invalid assignment target before the" + "'" + first_token + "' Token"); // we don’t throw a 'ParseError' because =>
-        // the parser isn’t in a confused state where we need to go into panic mode and synchronize.
-
-      } else if (first_token.type == PLUS_EQUAL) {
-        Token comma = previous();
-        //Expr.Binary(expr, operator, right)
-        Expr value = assignment(); // makes the parsing rule right-recursive.
-
-        if (expr instanceof Expr.Variable) {
-          Token name = ((Expr.Variable) expr).name;
-          value = new Expr.Binary((Expr.Variable) expr, PLUS, value);
-          // a += b += 6;
-          return new Expr.Assign(name, value);
-        }
-
-        error(comma, "Invalid assignment target before the" + "'" + first_token + "' Token"); // we don’t throw a 'ParseError' because =>
-        // the parser isn’t in a confused state where we need to go into panic mode and synchronize.
-      }
-    }
-
-    else {
-      Lox.error(first_token,
-              "Expected a left-expression before the " + "'" + first_token + "' Token");
-    }
-
-    return expr;
-  }
-//-----------------------------------------------------
-  // challenges:
-  // comma (left-associative) + ternary (right-associative).
-  //---
-  private Expr comma() {
-    Token ProductionErrorToken = match(COMMA) ? previous() : null;
-
     Expr expr = ternary();
 
-    while (match(COMMA)) {
-      Token operator = previous();
-      Expr right = ternary();
-      expr = new Expr.Binary(expr, operator, right);
+    if (match(EQUAL)) {
+      Token equals = previous();
+      Expr value = assignment();
+
+      if (expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable)expr).name;
+        return new Expr.Assign(name, value);
+      }
+
+      error(equals, "Invalid assignment target before the '=' token");
     }
 
-    if (ProductionErrorToken != null) {
-      Lox.error(ProductionErrorToken,
-              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
+    // this is my own implementation of the '+=' operator:
+    //---
+    else if (match(PLUS_EQUAL)) {
+      Token equals = previous();
+      Expr value = assignment();
+
+      if (expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable)expr).name;
+        return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));
+      }
+
+      error(equals, "Invalid assignment target before the '+=' token");
     }
+    //---
 
     return expr;
   }
 //-----------------------------------------------------
+  // challenge - ternary (right-associative):
+  //---
   private Expr ternary() { // tried to add error-production to the ternary operator, but it's just =>
     // way to complicated to keep both expressions around the ':' token, and make it still make =>
     // sense for a future optimizer / resolver to use it properly... I GIVE UP!
@@ -186,28 +167,17 @@ class Parser {
   //---
 //-----------------------------------------------------
   private Expr equality() {
-    Token ProductionErrorToken = match(BANG_EQUAL, EQUAL_EQUAL) ? previous() : null;
-
     Expr expr = comparison();
-
     while (match(BANG_EQUAL, EQUAL_EQUAL)) {
       Token operator = previous();
       Expr right = comparison();
       expr = new Expr.Binary(expr, operator, right);
     }
-
-    if (ProductionErrorToken != null) {
-      Lox.error(ProductionErrorToken,
-              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
-    }
-
     return expr; // returning 'expr' even if an error-production was found, for the =>
     // 'resolver' section to have a bigger AST to check scopes.
   }
 //-----------------------------------------------------
   private Expr comparison() {
-    Token ProductionErrorToken = match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) ? previous() : null;
-
     Expr expr = term();
 
     while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
@@ -215,18 +185,10 @@ class Parser {
       Expr right = term();
       expr = new Expr.Binary(expr, operator, right);
     }
-
-    if (ProductionErrorToken != null) {
-      Lox.error(ProductionErrorToken,
-              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
-    }
-
     return expr;
   }
 //-----------------------------------------------------
   private Expr term() {
-    Token ProductionErrorToken = match(MINUS, PLUS) ? previous() : null;
-
     Expr expr = factor();
 
     while (match(MINUS, PLUS)) {
@@ -234,18 +196,10 @@ class Parser {
       Expr right = factor();
       expr = new Expr.Binary(expr, operator, right);
     }
-
-    if (ProductionErrorToken != null) {
-      Lox.error(ProductionErrorToken,
-              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
-    }
-
     return expr;
   }
 //-----------------------------------------------------
   private Expr factor() {
-    Token ProductionErrorToken = match(SLASH, STAR) ? previous() : null;
-
     Expr expr = unary();
 
     while (match(SLASH, STAR)) {
@@ -253,12 +207,6 @@ class Parser {
       Expr right = unary();
       expr = new Expr.Binary(expr, operator, right);
     }
-
-    if (ProductionErrorToken != null) {
-      Lox.error(ProductionErrorToken,
-              "Expected a left-expression before the " + "'" + ProductionErrorToken + "' Token");
-    }
-
     return expr;
   }
 //-----------------------------------------------------
@@ -292,7 +240,49 @@ class Parser {
       return new Expr.Grouping(expr);
     }
 
-    throw error(peek(), "Expected an expression");
+    // challenge: proper error-productions:
+    //---
+    return switch (peek().type) {
+      case COMMA -> { // comma().
+        error(peek(), "Expected a left-expression before the ',' (comma)-Token");
+        advance();
+        yield expression();
+      }
+      case QUESTION -> { // ternary().
+        error(peek(), "Expected a left-expression before the '?' (ternary)-Token");
+        advance();
+        yield expression();
+      }
+      case EQUAL, PLUS_EQUAL -> { // assignment().
+        error(peek(), "Invalid assignment target before the '" + peek().lexeme + "' (assignment)-token");
+        advance();
+        yield expression();
+      }
+      case BANG_EQUAL, EQUAL_EQUAL -> { // equality().
+        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (equality)-Token");
+        advance();
+        yield expression();
+      }
+      case GREATER, GREATER_EQUAL, LESS, LESS_EQUAL -> { //comparison().
+        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (comparison)-Token");
+        advance();
+        yield expression();
+      }
+      case MINUS, PLUS -> { //term().
+        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (term)-Token");
+        advance();
+        yield expression();
+      }
+      case SLASH, STAR -> { //factor().
+        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (factor)-Token");
+        advance();
+        yield expression();
+      }
+
+      // entering panic mode:
+      default -> throw error(peek(), "Expected an expression");
+    };
+    //---
   }
 //-----------------------------------------------------
 
@@ -336,12 +326,12 @@ class Parser {
     return peek().type == EOF;
   }
 
-  /// @return the current token.
+  /// @return the current token (does not advances).
   private Token peek() {
     return tokens.get(current);
   }
 
-  /// @return the previous token.
+  /// @return the previous token (does not advances).
   private Token previous() {
     return tokens.get(current - 1);
   }
