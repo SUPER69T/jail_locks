@@ -12,6 +12,7 @@ abstract class Expr {
     R visitLiteralExpr(Literal expr);
     R visitUnaryExpr(Unary expr);
     R visitVariableExpr(Variable expr);
+    R visitErrorExpr(Error expr);
   }
 
   abstract <R> R accept(Visitor<R> visitor);
@@ -128,6 +129,22 @@ abstract class Expr {
     }
 
     final Token name;
+  }
+//----------------------------------
+//-------------Error:
+  static class Error extends Expr {
+    Error(Token errToken, List<Expr> subExpressions) {
+      this.errToken = errToken;
+      this.subExpressions = subExpressions;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitErrorExpr(this);
+    }
+
+    final Token errToken;
+    final List<Expr> subExpressions;
   }
 //----------------------------------
 }

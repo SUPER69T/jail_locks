@@ -22,13 +22,15 @@ public class GenerateAst {
       "Grouping : Expr expression",
       "Literal  : Object value",
       "Unary    : Token operator, Expr right",
-      "Variable : Token name"
+      "Variable : Token name",
+      "Error    : Token errToken, List<Expr> subExpressions"
     ));
 
     // generating the 'Stmt' abstract class:
     defineAst(outputDir, "Stmt", Arrays.asList(
       "Block      : List<Stmt> statements",
       "Expression : Expr expression",
+      "If         : Expr condition, Stmt thenBranch, Stmt elseBranch",
       "Print      : Expr expression",
       "Exit       : None",
       "Var        : Token name, Expr initializer"

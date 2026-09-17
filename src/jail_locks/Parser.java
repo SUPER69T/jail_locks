@@ -40,10 +40,25 @@ class Parser {
   }
 //-----------------------------------------------------
   private Stmt statement() {
+    if (match(IF)) return ifStatement();
     if (match(PRINT)) return printStatement();
     if (match(LEFT_BRACE)) return new Stmt.Block(block());
     if (match(EXIT)) return new Stmt.Exit();
     return expressionStatement();
+  }
+//-----------------------------------------------------
+  private Stmt ifStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'if'.");
+    Expr condition = expression();
+    consume(RIGHT_PAREN, "Expect ')' after if condition.");
+
+    Stmt thenBranch = statement();
+    Stmt elseBranch = null;
+    if (match(ELSE)) {
+      elseBranch = statement();
+    }
+
+    return new Stmt.If(condition, thenBranch, elseBranch);
   }
 //-----------------------------------------------------
   private Stmt printStatement() {
@@ -150,15 +165,25 @@ class Parser {
 //-----------------------------------------------------
   // challenge - ternary (right-associative):
   //---
-  private Expr ternary() { // tried to add error-production to the ternary operator, but it's just =>
-    // way to complicated to keep both expressions around the ':' token, and make it still make =>
-    // sense for a future optimizer / resolver to use it properly... I GIVE UP!
+  private Expr ternary() {
+    //-------------------------------------------------------------------------------------------------------------|
+    // OLD COMMENT:                                                                                                |
+    // tried to add error-production to the ternary operator, but it's just =>                                     |
+    // way to complicated to keep both expressions around the ':' token, and make it still make =>                 |
+    // sense for a future optimizer / resolver to use it properly... I GIVE UP!                                    |
+    // NEW COMMENT:                                                                                                |
+    // added my own Expr.Error expression-type class for error-productions, and completely =>                      |
+    // upgraded the error-production method robert initially wanted for his jlox interpreter =>                    |
+    // (thanks to gemini's effort of explaining and my own struggle with this insane code project).                |
+    // awesome stuff, and robert deserves  all the credit for making me fall in love with this =>                  |
+    // stuff and really appreciate the complexity, methodology, and beauty of designing and building interpreters. |
+    //-------------------------------------------------------------------------------------------------------------|
 
     Expr expr = equality();
     if (match(QUESTION)) {
       Token question = previous();
       Expr middle = expression();
-      Token colon = consume(COLON, "Expected a colon: ':', after question-operator: '?'");
+      Token colon = consume(COLON, "Expected ':' after '?' in the ternary operator");
       Expr right = ternary();
       return new Expr.Ternary(expr, question, middle, colon, right);
     }
@@ -249,10 +274,22 @@ class Parser {
         yield expression();
       }
       case QUESTION -> { // ternary().
-        error(peek(), "Expected a left-expression before the '?' (ternary)-Token");
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the '?' (ternary)-Token");
+
+        Expr middle = expression();
+        consume(COLON, "Expected ':' after '?' in the ternary operator");
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(middle, right);
+        yield new Expr.Error(errToken, subExpressions);
+      }
+      case COLON -> { // ternary().
+        error(peek(), "Unexpected ':' (ternary)-Token located outside of a ternary expression");
         advance();
         yield expression();
       }
+
       case EQUAL, PLUS_EQUAL -> { // assignment().
         error(peek(), "Invalid assignment target before the '" + peek().lexeme + "' (assignment)-token");
         advance();
@@ -302,8 +339,10 @@ class Parser {
     return false;
   }
 
-  /// 'consume' is mainly used to advance, but also throw errors with specific messages.
-  @SuppressWarnings("CanIgnoreReturnValue") // istg bro, i ain't learning no java for the death of me.
+  /// 'consume' compares the current token to the expected Token type that's passed
+  /// as a parameter and returns this token on successful comparison, while also
+  /// advancing. on unsuccessful comparison it throws an error with passed message parameter.
+  @SuppressWarnings("CanIgnoreReturnValue") // istg bro, I ain't learning no java for the death of me.
    private Token consume(TokenType type, String message) { // ignore
     if (check(type)) return advance();
 
