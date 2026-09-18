@@ -269,9 +269,13 @@ class Parser {
     //---
     return switch (peek().type) {
       case COMMA -> { // comma().
-        error(peek(), "Expected a left-expression before the ',' (comma)-Token");
-        advance();
-        yield expression();
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the ',' (comma)-Token");
+
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
       }
       case QUESTION -> { // ternary().
         Token errToken = advance();
@@ -285,35 +289,58 @@ class Parser {
         yield new Expr.Error(errToken, subExpressions);
       }
       case COLON -> { // ternary().
-        error(peek(), "Unexpected ':' (ternary)-Token located outside of a ternary expression");
-        advance();
-        yield expression();
-      }
+        Token errToken = advance();
+        error(errToken, "Unexpected ':' (ternary)-Token located outside of a ternary expression");
 
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
+      }
       case EQUAL, PLUS_EQUAL -> { // assignment().
-        error(peek(), "Invalid assignment target before the '" + peek().lexeme + "' (assignment)-token");
-        advance();
-        yield expression();
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (assignment)-token");
+
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
       }
       case BANG_EQUAL, EQUAL_EQUAL -> { // equality().
-        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (equality)-Token");
-        advance();
-        yield expression();
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (equality)-Token");
+
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
       }
       case GREATER, GREATER_EQUAL, LESS, LESS_EQUAL -> { //comparison().
-        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (comparison)-Token");
-        advance();
-        yield expression();
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (comparison)-Token");
+
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
       }
       case MINUS, PLUS -> { //term().
-        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (term)-Token");
-        advance();
-        yield expression();
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (term)-Token");
+
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
       }
       case SLASH, STAR -> { //factor().
-        error(peek(), "Expected a left-expression before the " + "'" + peek().lexeme + "' (factor)-Token");
-        advance();
-        yield expression();
+        Token errToken = advance();
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (factor)-Token");
+
+        Expr right= expression();
+
+        List<Expr> subExpressions = List.of(right);
+        yield new Expr.Error(errToken, subExpressions);
       }
 
       // entering panic mode:
