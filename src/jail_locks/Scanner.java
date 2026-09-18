@@ -13,7 +13,7 @@ import java.util.ArrayDeque;
 import static jail_locks.TokenType.*;
 
 class Scanner {
-  private final String source;
+  private final String source; // source input code.
   private final List<Token> tokens = new ArrayList<>();
   private int start = 0;
   private int current = 0;
@@ -198,7 +198,7 @@ class Scanner {
 
     // Look for a fractional part.
     if (peek() == '.' && isDigit(peekNext())) {
-      // Consume the "."
+      // Consume the "." (only consumes a single '.', thus keeping the math safe).
       advance();
 
       while (isDigit(peek())) advance();

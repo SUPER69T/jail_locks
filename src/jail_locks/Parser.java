@@ -48,9 +48,9 @@ class Parser {
   }
 //-----------------------------------------------------
   private Stmt ifStatement() {
-    consume(LEFT_PAREN, "Expect '(' after 'if'.");
+    consume(LEFT_PAREN, "Expect '(' after 'if'");
     Expr condition = expression();
-    consume(RIGHT_PAREN, "Expect ')' after if condition.");
+    consume(RIGHT_PAREN, "Expect ')' after if condition");
 
     Stmt thenBranch = statement();
     Stmt elseBranch = null;
@@ -142,7 +142,7 @@ class Parser {
         return new Expr.Assign(name, value);
       }
 
-      error(equals, "Invalid assignment target before the '=' token");
+      error(equals, "Invalid assignment target before the '=' operator");
     }
 
     // this is my own implementation of the '+=' operator:
@@ -156,7 +156,7 @@ class Parser {
         return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));
       }
 
-      error(equals, "Invalid assignment target before the '+=' token");
+      error(equals, "Invalid assignment target before the '+=' operator");
     }
     //---
 
@@ -216,10 +216,20 @@ class Parser {
   private Expr term() {
     Expr expr = factor();
 
-    while (match(MINUS, PLUS)) {
+    while (match(MINUS, PLUS)) { // 5 + 4 + 7++ + 7;
       Token operator = previous();
-      Expr right = factor();
-      expr = new Expr.Binary(expr, operator, right);
+      if (match(operator.type)) {// means an increment / decrement operation has been detected.
+        // in case of the left expression being a variable that requires reassignment:
+        if (expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable)expr).name;
+        expr = new Expr.Assign(name, new Expr.Binary(expr, operator, new Expr.Literal(Double.valueOf(1))));
+        } else { // in case of a regular AST expression node we follow C++'s steps and throw:
+          error(operator, "Invalid assignment target before the '" + operator.lexeme + operator.lexeme + "' operator");
+        }
+      } else {
+        Expr right = factor();
+        expr = new Expr.Binary(expr, operator, right);
+      }
     }
     return expr;
   }
@@ -270,7 +280,7 @@ class Parser {
     return switch (peek().type) {
       case COMMA -> { // comma().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the ',' (comma)-Token");
+        error(errToken, "Expected a left-expression before the ',' (comma)-operator");
 
         Expr right= expression();
 
@@ -279,7 +289,7 @@ class Parser {
       }
       case QUESTION -> { // ternary().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the '?' (ternary)-Token");
+        error(errToken, "Expected a left-expression before the '?' (ternary)-token");
 
         Expr middle = expression();
         consume(COLON, "Expected ':' after '?' in the ternary operator");
@@ -299,7 +309,7 @@ class Parser {
       }
       case EQUAL, PLUS_EQUAL -> { // assignment().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (assignment)-token");
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (assignment)-operator");
 
         Expr right= expression();
 
@@ -308,7 +318,7 @@ class Parser {
       }
       case BANG_EQUAL, EQUAL_EQUAL -> { // equality().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (equality)-Token");
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (equality)-operator");
 
         Expr right= expression();
 
@@ -317,7 +327,7 @@ class Parser {
       }
       case GREATER, GREATER_EQUAL, LESS, LESS_EQUAL -> { //comparison().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (comparison)-Token");
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (comparison)-operator");
 
         Expr right= expression();
 
@@ -326,7 +336,7 @@ class Parser {
       }
       case MINUS, PLUS -> { //term().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (term)-Token");
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (term)-operator");
 
         Expr right= expression();
 
@@ -335,7 +345,7 @@ class Parser {
       }
       case SLASH, STAR -> { //factor().
         Token errToken = advance();
-        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (factor)-Token");
+        error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (factor)-operator");
 
         Expr right= expression();
 
