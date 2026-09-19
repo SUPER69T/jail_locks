@@ -10,7 +10,7 @@ abstract class Expr {
     R visitTernaryExpr(Ternary expr);
     R visitGroupingExpr(Grouping expr);
     R visitLiteralExpr(Literal expr);
-    R visitUnaryExpr(Unary expr);
+    R visitPrefixUnaryExpr(PrefixUnary expr);
     R visitVariableExpr(Variable expr);
     R visitErrorExpr(Error expr);
   }
@@ -101,16 +101,16 @@ abstract class Expr {
     final Object value;
   }
 //----------------------------------
-//-------------Unary:
-  static class Unary extends Expr {
-    Unary(Token operator, Expr right) {
+//-------------PrefixUnary:
+  static class PrefixUnary extends Expr {
+    PrefixUnary(Token operator, Expr right) {
       this.operator = operator;
       this.right = right;
     }
 
     @Override
     <R> R accept(Visitor<R> visitor) {
-      return visitor.visitUnaryExpr(this);
+      return visitor.visitPrefixUnaryExpr(this);
     }
 
     final Token operator;

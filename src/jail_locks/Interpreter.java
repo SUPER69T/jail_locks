@@ -129,7 +129,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
   @Override
-  public Object visitUnaryExpr(Expr.Unary expr) {
+  public Object visitPrefixUnaryExpr(Expr.PrefixUnary expr) {
     Object right = evaluate(expr.right);
 
     return switch (expr.operator.type) {
@@ -159,57 +159,57 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         // challenge:
         // implementing lexical string comparisons in lox:
         //---
-        case GREATER -> {
+      case GREATER -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double)left > (double) right;
+          yield (double) left > (double) right;
         }
         else if (left instanceof String && right instanceof String) {
-          yield ((String) left).compareTo((String)right) > 0;
+          yield ((String) left).compareTo((String) right) > 0;
         }
         throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
-        }
-        case GREATER_EQUAL -> {
+      }
+      case GREATER_EQUAL -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double)left > (double) right;
+          yield (double) left > (double) right;
         }
         else if (left instanceof String && right instanceof String) {
-          yield ((String) left).compareTo((String)right) >= 0;
+          yield ((String) left).compareTo((String) right) >= 0;
         }
         throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
-        }
-        case LESS -> {
+      }
+      case LESS -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double)left > (double) right;
+          yield (double) left > (double) right;
         }
         else if (left instanceof String && right instanceof String) {
-          yield ((String) left).compareTo((String)right) < 0;
+          yield ((String) left).compareTo((String) right) < 0;
         }
         throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
-        }
-        case LESS_EQUAL -> {
+      }
+      case LESS_EQUAL -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double)left > (double) right;
+          yield (double) left > (double) right;
         }
         else if (left instanceof String && right instanceof String) {
-          yield ((String) left).compareTo((String)right) <= 0;
+          yield ((String) left).compareTo((String) right) <= 0;
         }
         throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
-        }
-        //---
-        //--------------------------
-        case BANG_EQUAL -> !isEqual(left, right);
-        case EQUAL_EQUAL -> isEqual(left, right);
-        //--------------------------
-        case MINUS -> {
+      }
+      //---
+      //--------------------------
+      case BANG_EQUAL -> !isEqual(left, right);
+      case EQUAL_EQUAL -> isEqual(left, right);
+      //--------------------------
+      case MINUS -> {
         checkNumberOperands(expr.operator, left, right);
-        yield (double)left - (double)right;
-        }
-        case PLUS -> {
+        yield (double) left - (double) right;
+      }
+      case PLUS -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double)left + (double)right;
+          yield (double) left + (double) right;
         }
         if (left instanceof String && right instanceof String) {
-          yield (String)left + (String)right;
+          yield (String) left + (String) right;
         }
         // challenge:
         // auto-conversion on: string + (otherType) concatenation.
@@ -223,58 +223,56 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
           yield stringify(left) + right;
         }
         if (left instanceof String && right instanceof Boolean) {
-          yield (String)left + right;
+          yield (String) left + right;
         }
         if (left instanceof Boolean && right instanceof String) {
-          yield left + (String)right;
+          yield left + (String) right;
         }
         //
         throw new RuntimeError(expr.operator, "Operands must both either be numbers or strings.");
-        }
-        //---
-        case SLASH -> {
+      }
+      //---
+      case SLASH -> {
         checkNumberOperands(expr.operator, left, right);
         // challenge:
         // implemented both cases of division by - '0' just in case =>
         // we would want to return different values or different error messages:
         //---
-        if ((Double)left == 0 && (Double)right == 0) { // '0' / '0'
-          throw new RuntimeError(expr.operator,
-        "Tried dividing a '0' by '0'.");
+        if ((Double) left == 0 && (Double) right == 0) { // '0' / '0'
+          throw new RuntimeError(expr.operator, "Tried dividing a '0' by '0'.");
         }
-        if ((Double)right == 0) { // 'scalar' / '0'
-          throw new RuntimeError(expr.operator,
-        "Tried dividing a scalar number by '0'.");
+        if ((Double) right == 0) { // 'scalar' / '0'
+          throw new RuntimeError(expr.operator, "Tried dividing a scalar number by '0'.");
         }
         //---
-        yield (double)left / (double)right;
-        }
-        case STAR -> {
+        yield (double) left / (double) right;
+      }
+      case STAR -> {
         checkNumberOperands(expr.operator, left, right);
-        yield (double)left * (double)right;
-        }
-        //--------------------------
-        default ->
+        yield (double) left * (double) right;
+      }
+      //--------------------------
+      default ->
         // Unreachable.
         null;
-      };
+    };
   }
 //-----------------------------------------------------
   @Override
   public Object visitTernaryExpr(Expr.Ternary expr) {
-      try {
-          Boolean left = (Boolean) evaluate(expr.left);
-          Object middle = evaluate(expr.middle);
-          Object right = evaluate(expr.right);
-          if (left) {
-              return middle;
-          } else {
-              return right;
-          }
-      } catch (ClassCastException e) {
-        throw new RuntimeError(expr.question,
-                "left-side of the ternary operator must evaluate to a boolean value");
+    try {
+      Boolean left = (Boolean) evaluate(expr.left);
+      Object middle = evaluate(expr.middle);
+      Object right = evaluate(expr.right);
+      if (left) {
+        return middle;
+      } else {
+        return right;
       }
+    } catch (ClassCastException e) {
+      throw new RuntimeError(expr.question,
+              "left-side of the ternary operator must evaluate to a boolean value");
+    }
   }
 
   // implementing dummy visitError methods that will never be called cause the parser =>
@@ -285,7 +283,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
 // HELPER FUNCTIONS:
 //-----------------------------------------------------
-private String stringify(Object object) {
+  private String stringify(Object object) {
     if (object == null) return "nil";
 
     if (object instanceof Double) {

@@ -130,35 +130,25 @@ class Parser {
   * @RETURNS: a node representing an assignment of a value to an
   * existing variable within the environments-hierarchy.
   */
-  private Expr assignment() {
+  private Expr assignment() { // (right-associative).
     Expr expr = ternary();
 
-    if (match(EQUAL)) {
+    if (match(EQUAL, PLUS_EQUAL, MINUS_EQUAL)) {
       Token equals = previous();
       Expr value = assignment();
 
       if (expr instanceof Expr.Variable) {
         Token name = ((Expr.Variable)expr).name;
-        return new Expr.Assign(name, value);
+
+        if (equals.type.equals(EQUAL)) {return new Expr.Assign(name, value);}
+        // this is my own implementation of the '+=' / '-=' operators:
+        //---
+        else if (equals.type.equals(PLUS_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));}
+        else if (equals.type.equals(MINUS_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(MINUS, "-", null, equals.line), value));}
+        //---
       }
-
-      error(equals, "Invalid assignment target before the '=' operator");
+      error(equals, "Invalid assignment target before the '" + equals.lexeme + "' operator");
     }
-
-    // this is my own implementation of the '+=' operator:
-    //---
-    else if (match(PLUS_EQUAL)) {
-      Token equals = previous();
-      Expr value = assignment();
-
-      if (expr instanceof Expr.Variable) {
-        Token name = ((Expr.Variable)expr).name;
-        return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));
-      }
-
-      error(equals, "Invalid assignment target before the '+=' operator");
-    }
-    //---
 
     return expr;
   }
@@ -202,7 +192,7 @@ class Parser {
     // 'resolver' section to have a bigger AST to check scopes.
   }
 //-----------------------------------------------------
-  private Expr comparison() {
+  private Expr comparison() { // (left-associative).
     Expr expr = term();
 
     while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
@@ -213,46 +203,56 @@ class Parser {
     return expr;
   }
 //-----------------------------------------------------
-  private Expr term() {
+  private Expr term() { // (left-associative).
     Expr expr = factor();
 
-    while (match(MINUS, PLUS)) { // 5 + 4 + 7++ + 7;
+    while (match(MINUS, PLUS)) {
       Token operator = previous();
-      if (match(operator.type)) {// means an increment / decrement operation has been detected.
-        // in case of the left expression being a variable that requires reassignment:
-        if (expr instanceof Expr.Variable) {
-        Token name = ((Expr.Variable)expr).name;
-        expr = new Expr.Assign(name, new Expr.Binary(expr, operator, new Expr.Literal(Double.valueOf(1))));
-        } else { // in case of a regular AST expression node we follow C++'s steps and throw:
-          error(operator, "Invalid assignment target before the '" + operator.lexeme + operator.lexeme + "' operator");
-        }
-      } else {
-        Expr right = factor();
-        expr = new Expr.Binary(expr, operator, right);
-      }
-    }
-    return expr;
-  }
-//-----------------------------------------------------
-  private Expr factor() {
-    Expr expr = unary();
-
-    while (match(SLASH, STAR)) {
-      Token operator = previous();
-      Expr right = unary();
+      Expr right = factor();
       expr = new Expr.Binary(expr, operator, right);
     }
     return expr;
   }
 //-----------------------------------------------------
-  private Expr unary() {
+  private Expr factor() { // (left-associative).
+    Expr expr = prefix_unary();
+
+    while (match(SLASH, STAR)) {
+      Token operator = previous();
+      Expr right = prefix_unary();
+      expr = new Expr.Binary(expr, operator, right);
+    }
+    return expr;
+  }
+//-----------------------------------------------------
+  private Expr prefix_unary() {
     if (match(BANG, MINUS)) {
       Token operator = previous();
-      Expr right = unary();
-      return new Expr.Unary(operator, right);
+      Expr right = prefix_unary();
+      return new Expr.PrefixUnary(operator, right);
     }
 
-    return primary();
+    return postfix_unary();
+  }
+
+  private Expr postfix_unary() {
+    Expr expr = primary();
+
+    while (match(INCREMENT, DECREMENT)) {
+      Token operator = previous();
+      Token binary_op = operator.type.equals(INCREMENT) ?
+      new Token(PLUS, "+", null, operator.line) :
+      new Token(MINUS, "-", null, operator.line);
+
+      // in case of the left expression being a variable that requires reassignment:
+      if (expr instanceof Expr.Variable) {
+      Token name = ((Expr.Variable)expr).name;
+      expr = new Expr.Assign(name, new Expr.Binary(expr, binary_op, new Expr.Literal(1.0)));
+      } else { // in case of a regular AST expression node we follow C++'s steps and throw:
+        error(operator, "Invalid assignment target before the '" + operator.lexeme + "' operator");
+      }
+    }
+    return expr;
   }
 //-----------------------------------------------------
   private Expr primary() {
@@ -307,7 +307,7 @@ class Parser {
         List<Expr> subExpressions = List.of(right);
         yield new Expr.Error(errToken, subExpressions);
       }
-      case EQUAL, PLUS_EQUAL -> { // assignment().
+      case EQUAL, PLUS_EQUAL, MINUS_EQUAL -> { // assignment().
         Token errToken = advance();
         error(errToken, "Expected a left-expression before the '" + peek().lexeme + "' (assignment)-operator");
 

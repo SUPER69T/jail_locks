@@ -78,12 +78,12 @@ class Scanner {
       case '.':
         addToken(DOT);
         break;
-      case '-':
-        addToken(MINUS);
+      case '-': //                                 |                                  |default
+        addToken(match('=') ? MINUS_EQUAL : (match('-') ? DECREMENT : MINUS));
         break;
       //--------------------------
-      case '+':
-        addToken(match('=') ? PLUS_EQUAL : PLUS);
+      case '+': //                                |                                  |default
+        addToken(match('=') ? PLUS_EQUAL : (match('+') ? INCREMENT : PLUS));
         break;
       //--------------------------
       case ';':
@@ -228,7 +228,7 @@ class Scanner {
   }
 
   /**
-   * COMPARES CURRENT TO @expected AND ADVANCES FORWARD.
+   * compares the expected char to the current. advances only if equal.
    */
   private boolean match(char expected) {
     if (isAtEnd()) return false;
