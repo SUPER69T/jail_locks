@@ -1,0 +1,9 @@
+print "calculating the factorial:";
+var a = 1;
+var n = 5;
+for (var i = 1; i <= n;) {
+  a = a * (i++);
+  if (i==n) print "the answer is: " + a + ".";
+}
+
+// print"calculating the factorial:";var a=1;var n=5;for(var i=1;i<=n;){a=a*(i++);if(i==n)print"the answer is: "+a+".";}

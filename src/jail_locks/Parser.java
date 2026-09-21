@@ -1,8 +1,8 @@
 package jail_locks;
 
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
 // importing all TokenTypes:
 import static jail_locks.TokenType.*;
@@ -40,11 +40,73 @@ class Parser {
   }
 //-----------------------------------------------------
   private Stmt statement() {
+    if (match(FOR)) return forStatement();
     if (match(IF)) return ifStatement();
     if (match(PRINT)) return printStatement();
+    if (match(WHILE)) return whileStatement();
     if (match(LEFT_BRACE)) return new Stmt.Block(block());
     if (match(EXIT)) return new Stmt.Exit();
     return expressionStatement();
+  }
+//-----------------------------------------------------
+  private Stmt forStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+    Stmt initializer;
+    if (match(SEMICOLON)) {
+      initializer = null;
+    } else if (match(VAR)) {
+      initializer = varDeclaration();
+    } else {
+      initializer = expressionStatement();
+    }
+
+    Expr condition = null;
+    if (!check(SEMICOLON)) {
+      condition = expression();
+    }
+    consume(SEMICOLON, "Expect ';' after loop condition.");
+
+    Expr increment = null;
+    if (!check(RIGHT_PAREN)) {
+      increment = expression();
+    }
+    consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    Stmt body = statement();
+// body1 = bodyStmt
+//---------------------
+    if (increment != null) {
+      // the visitBlockStmt() sets a new nested environment, and also =>
+      // executes each statement in the provided list of statements:
+      body = new Stmt.Block(
+          Arrays.asList(
+              body,
+              new Stmt.Expression(increment))); // the increment section =>
+                                                // is hardcoded to appear =>
+                                                // after the entire 'body' =>
+                                                // statement of the for-loop.
+    }
+// construction step-1:
+// body2 = {bodyStmt, incrementExpr}
+//---------------------
+    if (condition == null) condition = new Expr.Literal(true);
+    body = new Stmt.While(condition, body); // 'condition' appears before =>
+                                            // the body, which appears =>
+                                            // before the increment.
+// construction step-2:
+// body3 = whileStmt(condition=conditionExpr, body={body2, incrementExpr})
+//---------------------
+
+    if (initializer != null) {
+      body = new Stmt.Block(Arrays.asList(initializer, body)); // =>
+      // 'initializer' appears before the body, which appears... you get it!
+    }
+// construction step-3:
+// body4 = {initializerStmt, whileStmt(condition=conditionExpr, body={body3, incrementExpr})}
+//---------------------
+
+    return body;
   }
 //-----------------------------------------------------
   private Stmt ifStatement() {
@@ -81,6 +143,15 @@ class Parser {
 
     consume(SEMICOLON, "Expect ';' after variable declaration");
     return new Stmt.Var(name, initializer);
+  }
+//-----------------------------------------------------
+  private Stmt whileStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'while'");
+    Expr condition = expression();
+    consume(RIGHT_PAREN, "Expect ')' after condition");
+    Stmt body = statement();
+
+    return new Stmt.While(condition, body);
   }
 //-----------------------------------------------------
   private Stmt expressionStatement() {
@@ -169,7 +240,7 @@ class Parser {
     // stuff and really appreciate the complexity, methodology, and beauty of designing and building interpreters. |
     //-------------------------------------------------------------------------------------------------------------|
 
-    Expr expr = equality();
+    Expr expr = or();
     if (match(QUESTION)) {
       Token question = previous();
       Expr middle = expression();
@@ -181,7 +252,31 @@ class Parser {
   }
   //---
 //-----------------------------------------------------
-  private Expr equality() {
+  private Expr or() { // (left-associative).
+    Expr expr = and();
+
+    while (match(OR)) {
+      Token operator = previous();
+      Expr right = and();
+      expr = new Expr.Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+//-----------------------------------------------------
+  private Expr and() { // (left-associative).
+    Expr expr = equality();
+
+    while (match(AND)) {
+      Token operator = previous();
+      Expr right = equality();
+      expr = new Expr.Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+//-----------------------------------------------------
+  private Expr equality() { // (left-associative).
     Expr expr = comparison();
     while (match(BANG_EQUAL, EQUAL_EQUAL)) {
       Token operator = previous();

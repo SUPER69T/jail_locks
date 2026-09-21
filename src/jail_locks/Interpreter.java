@@ -85,6 +85,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
   @Override
+  public Void visitWhileStmt(Stmt.While stmt) {
+    while (isTruthy(evaluate(stmt.condition))) {
+      execute(stmt.body);
+    }
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
     executeBlock(stmt.statements, new Environment(environment));
     return null;
@@ -129,6 +137,19 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
   @Override
+  public Object visitLogicalExpr(Expr.Logical expr) {
+    Object left = evaluate(expr.left);
+
+    if (expr.operator.type == TokenType.OR) {
+      if (isTruthy(left)) return left;
+    } else {
+      if (!isTruthy(left)) return left;
+    }
+
+    return evaluate(expr.right);
+  }
+//-----------------------------------------------------
+  @Override
   public Object visitPrefixUnaryExpr(Expr.PrefixUnary expr) {
     Object right = evaluate(expr.right);
 
@@ -170,7 +191,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       }
       case GREATER_EQUAL -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double) left > (double) right;
+          yield (double) left >= (double) right;
         }
         else if (left instanceof String && right instanceof String) {
           yield ((String) left).compareTo((String) right) >= 0;
@@ -179,7 +200,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       }
       case LESS -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double) left > (double) right;
+          yield (double) left < (double) right;
         }
         else if (left instanceof String && right instanceof String) {
           yield ((String) left).compareTo((String) right) < 0;
@@ -188,7 +209,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       }
       case LESS_EQUAL -> {
         if (left instanceof Double && right instanceof Double) {
-          yield (double) left > (double) right;
+          yield (double) left <= (double) right;
         }
         else if (left instanceof String && right instanceof String) {
           yield ((String) left).compareTo((String) right) <= 0;

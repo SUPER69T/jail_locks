@@ -21,7 +21,8 @@ public class GenerateAst {
       "Ternary  : Expr left, Token question, Expr middle, Token colon, Expr right",
       "Grouping : Expr expression",
       "Literal  : Object value",
-      "PrefixUnary    : Token operator, Expr right",
+      "Logical  : Expr left, Token operator, Expr right",
+      "PrefixUnary    : Token operator, Expr right", // postFixUnary is desugared.
       "Variable : Token name",
       "Error    : Token errToken, List<Expr> subExpressions"
     ));
@@ -33,7 +34,8 @@ public class GenerateAst {
       "If         : Expr condition, Stmt thenBranch, Stmt elseBranch",
       "Print      : Expr expression",
       "Exit       : None",
-      "Var        : Token name, Expr initializer"
+      "Var        : Token name, Expr initializer",
+      "While      : Expr condition, Stmt body"
     ));
   }
 
