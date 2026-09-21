@@ -29,7 +29,7 @@ public class GenerateAst {
 
     // generating the 'Stmt' abstract class:
     defineAst(outputDir, "Stmt", Arrays.asList(
-      "Block      : List<Stmt> statements",
+      "Block      : List<Stmt> statements, Boolean CreateNestedEnv",
       "Expression : Expr expression",
       "If         : Expr condition, Stmt thenBranch, Stmt elseBranch",
       "Print      : Expr expression",

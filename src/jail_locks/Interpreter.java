@@ -94,17 +94,21 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
-    executeBlock(stmt.statements, new Environment(environment));
+    if (stmt.CreateNestedEnv) {
+      executeBlock(stmt.statements, new Environment(environment));
+    }
+    else {
+      executeStmtList(stmt.statements);
+    }
+
     return null;
   }
   void executeBlock(List<Stmt> statements, Environment environment) {
     Environment previous = this.environment;
     try {
       this.environment = environment;
+      executeStmtList(statements);
 
-      for (Stmt statement : statements) {
-        execute(statement);
-      }
     } finally {
       this.environment = previous;
     }
@@ -272,6 +276,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         checkNumberOperands(expr.operator, left, right);
         yield (double) left * (double) right;
       }
+      case COMMA -> right;
       //--------------------------
       default ->
         // Unreachable.
@@ -343,6 +348,12 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     if (a == null) return false;
 
     return a.equals(b);
+  }
+
+  void executeStmtList(List<Stmt> statements) {
+    for (Stmt statement : statements) {
+        execute(statement);
+      }
   }
 //-----------------------------------------------------
 }

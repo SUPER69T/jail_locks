@@ -18,8 +18,9 @@ abstract class Stmt {
 //----------------------------------
 //-------------Block:
   static class Block extends Stmt {
-    Block(List<Stmt> statements) {
+    Block(List<Stmt> statements, Boolean CreateNestedEnv) {
       this.statements = statements;
+      this.CreateNestedEnv = CreateNestedEnv;
     }
 
     @Override
@@ -28,6 +29,7 @@ abstract class Stmt {
     }
 
     final List<Stmt> statements;
+    final Boolean CreateNestedEnv;
   }
 //----------------------------------
 //-------------Expression:

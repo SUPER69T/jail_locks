@@ -44,7 +44,7 @@ class Parser {
     if (match(IF)) return ifStatement();
     if (match(PRINT)) return printStatement();
     if (match(WHILE)) return whileStatement();
-    if (match(LEFT_BRACE)) return new Stmt.Block(block());
+    if (match(LEFT_BRACE)) return new Stmt.Block(block(), true);
     if (match(EXIT)) return new Stmt.Exit();
     return expressionStatement();
   }
@@ -82,7 +82,8 @@ class Parser {
       body = new Stmt.Block(
           Arrays.asList(
               body,
-              new Stmt.Expression(increment))); // the increment section =>
+              new Stmt.Expression(increment)), true); // =>
+                                                // the increment section =>
                                                 // is hardcoded to appear =>
                                                 // after the entire 'body' =>
                                                 // statement of the for-loop.
@@ -99,7 +100,7 @@ class Parser {
 //---------------------
 
     if (initializer != null) {
-      body = new Stmt.Block(Arrays.asList(initializer, body)); // =>
+      body = new Stmt.Block(Arrays.asList(initializer, body), true); // =>
       // 'initializer' appears before the body, which appears... you get it!
     }
 // construction step-3:
@@ -134,15 +135,28 @@ class Parser {
   * of a new variable in the environments-hierarchy.
   */
   private Stmt varDeclaration() {
-    Token name = consume(IDENTIFIER, "Expect variable name");
 
-    Expr initializer = null;
-    if (match(EQUAL)) {
-      initializer = expression();
-    }
+    Token name;
+    Expr initializer;
+    List<Stmt> varDecs = new ArrayList<>();
+
+    // I was just thinking about how I shit on do-while loops all the time =>
+    // cause of how little use I ever got out of them and how I should def =>
+    // not implement it in Lox, and now I stumbled on the most perfect use =>
+    // case for a do-while loop I think I have ever seen in my life. ggs:
+    //---
+    do {
+      name = consume(IDENTIFIER, "Expect variable name");
+      initializer = null;
+      if (match(EQUAL)) {
+      initializer = assignment();
+      }
+      varDecs.add(new Stmt.Var(name, initializer));
+    } while (match(COMMA));
+    //---
 
     consume(SEMICOLON, "Expect ';' after variable declaration");
-    return new Stmt.Var(name, initializer);
+    return new Stmt.Block(varDecs, false);
   }
 //-----------------------------------------------------
   private Stmt whileStatement() {
@@ -198,13 +212,13 @@ class Parser {
   //---
 //-----------------------------------------------------
   /**
-  * @RETURNS: a node representing an assignment of a value to an
-  * existing variable within the environments-hierarchy.
+  * @RETURNS: an AST node representing the assignment of a value
+  * to an existing variable within the current Environment.
   */
   private Expr assignment() { // (right-associative).
     Expr expr = ternary();
 
-    if (match(EQUAL, PLUS_EQUAL, MINUS_EQUAL)) {
+    if (match(EQUAL, PLUS_EQUAL, MINUS_EQUAL, MUL_EQUAL, DIV_EQUAL)) {
       Token equals = previous();
       Expr value = assignment();
 
@@ -216,6 +230,8 @@ class Parser {
         //---
         else if (equals.type.equals(PLUS_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));}
         else if (equals.type.equals(MINUS_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(MINUS, "-", null, equals.line), value));}
+        else if (equals.type.equals(MUL_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(STAR, "*", null, equals.line), value));}
+        else if (equals.type.equals(DIV_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(SLASH, "/", null, equals.line), value));}
         //---
       }
       error(equals, "Invalid assignment target before the '" + equals.lexeme + "' operator");

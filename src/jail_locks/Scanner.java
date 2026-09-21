@@ -90,7 +90,7 @@ class Scanner {
         addToken(SEMICOLON);
         break;
       case '*':
-        addToken(STAR);
+        addToken(match('=') ? MUL_EQUAL : STAR);
         break;
       case '?':
         addToken(QUESTION);
@@ -158,7 +158,7 @@ class Scanner {
         //---
 
         else {
-          addToken(SLASH);
+          addToken(match('=') ? DIV_EQUAL : SLASH);
         }
         break;
       //--------------------------
