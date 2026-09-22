@@ -1,0 +1,67 @@
+my answers:
+Q1. no idea.
+Q2.
+it's called Tail Call Optimization (TCO), and it is necessary to prevent from stack-overflows to occur when making =>
+deep recursive function calls
+FP languages like scheme and haskell implement TCO by design.
+
+
+#---------------------------------------------------
+gemini's answers:
+Q1.
+"
+The classic language that achieves this is Smalltalk (and Ruby heavily borrows this philosophy). 
+Smalltalk is a pure object-oriented language where control flow is handled entirely by dynamic =>
+dispatch (polymorphism).
+
+Here is how it works: in a language without an if statement, true and false are not primitive values. 
+They are instances of two entirely different classes (TrueClass and FalseClass) that share a common =>
+interface.
+
+example: Object-Oriented Conditionals
+Imagine you want to evaluate condition ? print "yes" : print "no".
+Instead of a parser looking for an if or ? token, you just call a method on the boolean object itself, passing the branches as arguments:
+
+Java
+// The shared interface
+interface LoxBoolean {
+  void whenTrue(Function thenBranch, Function elseBranch);
+}
+
+// The 'true' singleton object
+class LoxTrue implements LoxBoolean {
+  @Override
+  public void whenTrue(Function thenBranch, Function elseBranch) {
+    thenBranch.call(); // Only executes the 'then' function!
+  }
+}
+
+// The 'false' singleton object
+class LoxFalse implements LoxBoolean {
+  @Override
+  public void whenTrue(Function thenBranch, Function elseBranch) {
+    elseBranch.call(); // Only executes the 'else' function!
+  }
+}
+"
+
+an additional explanation on the upcoming chapter-10 on function declarations and first-class functions:
+
+"
+When you pass a function declaration instead of an active function call, you are passing the instructions =>
+rather than the result.
+
+Think of it like handing someone a recipe card instead of a baked cake. The code inside fun() { blastOff(); } =>
+is bundled up into a neat little package (an object) that gets passed into the whenTrue method.
+
+Because it's just a package of unexecuted instructions, nothing explodes yet.
+
+Once those two packages (the thenBranch and the elseBranch) arrive inside the LoxTrue object's =>
+whenTrue method, the method actively chooses what to do with them. It explicitly calls thenBranch.call(), 
+which finally executes the instructions, and it simply ignores the elseBranch package. 
+The LoxFalse object does the exact opposite.
+
+This ability to treat code as data—passing it around in variables and choosing exactly when (or if) to =>
+execute it—is the definition of first-class functions.
+"
+#---------------------------------------------------

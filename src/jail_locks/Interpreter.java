@@ -86,8 +86,41 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitWhileStmt(Stmt.While stmt) {
-    while (isTruthy(evaluate(stmt.condition))) {
-      execute(stmt.body);
+      while (isTruthy(evaluate(stmt.condition))) {
+        try {
+          execute(stmt.body);
+        } catch (BREAK_abusing_RuntimeExceptions e) { // detected a 'break'-statement:
+          break;
+        } catch (CONTINUE_abusing_RuntimeExceptions e) { // detected a 'continue'-statement:
+          continue;
+        }
+      }
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitForStmt(Stmt.For stmt) {
+    if (stmt.initializer != null) execute(stmt.initializer);
+
+    while (stmt.condition == null || isTruthy(evaluate(stmt.condition))) {
+      try {
+          if (stmt.body != null) execute(stmt.body);
+          if (stmt.increment != null) evaluate(stmt.increment);
+        } catch (BREAK_abusing_RuntimeExceptions e) { // detected a 'break'-statement:
+          break;
+        } catch (CONTINUE_abusing_RuntimeExceptions e) { // detected a 'continue'-statement:
+          if (stmt.increment != null) evaluate(stmt.increment);
+          continue;
+        }
+    }
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitLoopFlowCtrlStmt(Stmt.LoopFlowCtrl stmt) {
+    switch (stmt.instruction.type) {
+    case BREAK -> throw new BREAK_abusing_RuntimeExceptions();
+    case CONTINUE -> throw new CONTINUE_abusing_RuntimeExceptions();
     }
     return null;
   }
@@ -276,7 +309,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         checkNumberOperands(expr.operator, left, right);
         yield (double) left * (double) right;
       }
-      case COMMA -> right;
+      case COMMA -> right; // C/C++ ','-operator functionality.
       //--------------------------
       default ->
         // Unreachable.

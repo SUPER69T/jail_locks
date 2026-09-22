@@ -29,13 +29,15 @@ public class GenerateAst {
 
     // generating the 'Stmt' abstract class:
     defineAst(outputDir, "Stmt", Arrays.asList(
-      "Block      : List<Stmt> statements, Boolean CreateNestedEnv",
-      "Expression : Expr expression",
-      "If         : Expr condition, Stmt thenBranch, Stmt elseBranch",
-      "Print      : Expr expression",
-      "Exit       : None",
-      "Var        : Token name, Expr initializer",
-      "While      : Expr condition, Stmt body"
+      "Block        : List<Stmt> statements, Boolean CreateNestedEnv",
+      "Expression   : Expr expression",
+      "If           : Expr condition, Stmt thenBranch, Stmt elseBranch",
+      "Print        : Expr expression",
+      "Exit         : None",
+      "Var          : Token name, Expr initializer",
+      "While        : Expr condition, Stmt body",
+      "For          : Stmt initializer, Expr condition, Expr increment, Stmt body",
+      "LoopFlowCtrl : Token instruction"
     ));
   }
 

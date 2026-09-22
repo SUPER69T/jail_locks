@@ -12,6 +12,8 @@ abstract class Stmt {
     R visitExitStmt(Exit stmt);
     R visitVarStmt(Var stmt);
     R visitWhileStmt(While stmt);
+    R visitForStmt(For stmt);
+    R visitLoopFlowCtrlStmt(LoopFlowCtrl stmt);
   }
 
   abstract <R> R accept(Visitor<R> visitor);
@@ -120,6 +122,40 @@ abstract class Stmt {
 
     final Expr condition;
     final Stmt body;
+  }
+//----------------------------------
+//-------------For:
+  static class For extends Stmt {
+    For(Stmt initializer, Expr condition, Expr increment, Stmt body) {
+      this.initializer = initializer;
+      this.condition = condition;
+      this.increment = increment;
+      this.body = body;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitForStmt(this);
+    }
+
+    final Stmt initializer;
+    final Expr condition;
+    final Expr increment;
+    final Stmt body;
+  }
+//----------------------------------
+//-------------LoopFlowCtrl:
+  static class LoopFlowCtrl extends Stmt {
+    LoopFlowCtrl(Token instruction) {
+      this.instruction = instruction;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitLoopFlowCtrlStmt(this);
+    }
+
+    final Token instruction;
   }
 //----------------------------------
 }

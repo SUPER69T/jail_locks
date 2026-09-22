@@ -12,6 +12,10 @@ class Parser {
 
   private final List<Token> tokens;
   private int current = 0;
+  private int loopDepth = 0; // a simulation of the nested depth inside the =>
+  // (while/for)-loops, to indicate whether the Stmt.LoopFlowCtrl should generate =>
+  // the proper (BREAK/CONTINUE)-Token if currently nested within a loop, or throw =>
+  // a ParseError for violating the Token's proper location rules.
 
   Parser(List<Token> tokens) {
     this.tokens = tokens;
@@ -46,6 +50,8 @@ class Parser {
     if (match(WHILE)) return whileStatement();
     if (match(LEFT_BRACE)) return new Stmt.Block(block(), true);
     if (match(EXIT)) return new Stmt.Exit();
+    if (match(BREAK, CONTINUE)) return loopFlowStatement();
+
     return expressionStatement();
   }
 //-----------------------------------------------------
@@ -72,42 +78,13 @@ class Parser {
       increment = expression();
     }
     consume(RIGHT_PAREN, "Expect ')' after for clauses.");
-
+    //
+    loopDepth += 1;
     Stmt body = statement();
-// body1 = bodyStmt
-//---------------------
-    if (increment != null) {
-      // the visitBlockStmt() sets a new nested environment, and also =>
-      // executes each statement in the provided list of statements:
-      body = new Stmt.Block(
-          Arrays.asList(
-              body,
-              new Stmt.Expression(increment)), true); // =>
-                                                // the increment section =>
-                                                // is hardcoded to appear =>
-                                                // after the entire 'body' =>
-                                                // statement of the for-loop.
-    }
-// construction step-1:
-// body2 = {bodyStmt, incrementExpr}
-//---------------------
-    if (condition == null) condition = new Expr.Literal(true);
-    body = new Stmt.While(condition, body); // 'condition' appears before =>
-                                            // the body, which appears =>
-                                            // before the increment.
-// construction step-2:
-// body3 = whileStmt(condition=conditionExpr, body={body2, incrementExpr})
-//---------------------
+    loopDepth -= 1;
+    //
 
-    if (initializer != null) {
-      body = new Stmt.Block(Arrays.asList(initializer, body), true); // =>
-      // 'initializer' appears before the body, which appears... you get it!
-    }
-// construction step-3:
-// body4 = {initializerStmt, whileStmt(condition=conditionExpr, body={body3, incrementExpr})}
-//---------------------
-
-    return body;
+    return new Stmt.Block(List.of(new Stmt.For(initializer, condition, increment, body)), true);
   }
 //-----------------------------------------------------
   private Stmt ifStatement() {
@@ -163,9 +140,22 @@ class Parser {
     consume(LEFT_PAREN, "Expect '(' after 'while'");
     Expr condition = expression();
     consume(RIGHT_PAREN, "Expect ')' after condition");
-    Stmt body = statement();
-
-    return new Stmt.While(condition, body);
+    //---
+    loopDepth+=1;
+    Stmt body = statement(); // <-- --- --- --- --- --- --- --- --- ---| these 'loopFlowStatement()' - Stmts
+    loopDepth-=1; //                                                   | are also being parsed and returned
+    //---                                                              | inside the 'forStatement()' - rule,
+    return new Stmt.While(condition, body); //                         | all while updating the 'loopDepth'-
+  } //                                                                 | counter to match the current nesting-
+//-----------------------------------------------------                | depth for enforcing correct loopFlow-
+  private Stmt loopFlowStatement() { // --> --- --- --- --- --- --- ---| Tokens appearance - locations.
+    Token brkORcntTkn = previous();
+    String name = brkORcntTkn.lexeme;
+    consume(SEMICOLON, "Expect ';' after '" + name + "'");
+    if (0 < loopDepth) {
+      return new Stmt.LoopFlowCtrl(brkORcntTkn);
+    }
+    throw error(brkORcntTkn, "The '" + name + "' statement cannot appear outside of an any enclosing loops.");
   }
 //-----------------------------------------------------
   private Stmt expressionStatement() {

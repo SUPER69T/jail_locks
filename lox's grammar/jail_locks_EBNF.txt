@@ -11,7 +11,9 @@ statement     → exprStmt
               | printStmt
               | whileStmt
               | block
-              | exit ;
+              | exit
+              | breakStmt
+              | continueStmt ;
 
 exprStmt      → expression ";" ;
 forStmt       → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
@@ -20,7 +22,8 @@ printStmt     → "print" expression ";" ;
 whileStmt     → "while" "(" expression ")" statement ;
 block         → "{" declaration* "}" ;
 exit          → "exit" ;
-
+breakStmt     → "break" ";" ;
+continueStmt  → "continue" ";" ;
 
 expression    → comma ;
 comma         → assignment ( "," assignment )*;
@@ -28,8 +31,8 @@ assignment    → IDENTIFIER ( "=" | "+=" | "-=") assignment
               | ternary ;
 ternary       → logic_or "?" expression ":" ternary
               | logic_or
-logic_or       → logic_and ( "or" logic_and )* ;
-logic_and      → equality ( "and" equality )* ;
+logic_or      → logic_and ( "or" logic_and )* ;
+logic_and     → equality ( "and" equality )* ;
 equality      → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison    → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term          → factor ( ( "-" | "+" ) factor )* ;
