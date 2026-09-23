@@ -316,13 +316,25 @@ class Parser {
   }
 //-----------------------------------------------------
   private Expr factor() { // (left-associative).
-    Expr expr = prefix_unary();
+    Expr expr = exponent();
 
     while (match(SLASH, STAR, MODULO)) {
       Token operator = previous();
-      Expr right = prefix_unary();
+      Expr right = exponent();
       expr = new Expr.Binary(expr, operator, right);
     }
+    return expr;
+  }
+//-----------------------------------------------------
+  private Expr exponent() { // (right-associative).
+    Expr expr = prefix_unary();
+
+    if (match(EXPONENT)) {
+      Token exponent = previous();
+      Expr power = exponent();
+      expr = new Expr.Binary(expr, exponent, power);
+    }
+
     return expr;
   }
 //-----------------------------------------------------

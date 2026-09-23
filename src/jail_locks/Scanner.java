@@ -94,6 +94,9 @@ class Scanner {
       case '%':
         addToken(MODULO);
         break;
+      case '^':
+        addToken(EXPONENT);
+        break;
       case '*':
         addToken(match('=') ? MUL_EQUAL : STAR);
         break;

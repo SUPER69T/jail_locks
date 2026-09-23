@@ -27,7 +27,7 @@ continueStmt  → "continue" ";" ;
 
 expression    → comma ;
 comma         → assignment ( "," assignment )*;
-assignment    → IDENTIFIER ( "=" | "+=" | "-=") assignment
+assignment    → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=") assignment
               | ternary ;
 ternary       → logic_or "?" expression ":" ternary
               | logic_or
@@ -36,7 +36,8 @@ logic_and     → equality ( "and" equality )* ;
 equality      → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison    → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term          → factor ( ( "-" | "+" ) factor )* ;
-factor        → prefix_unary ( ( "/" | "*" ) prefix_unary )* ;
+factor        → exponent ( ( "/" | "*" | "%") exponent )* ;
+exponent      → prefix_unary ( "^" ) exponent | prefix_unary;
 prefix_unary  → ( "!" | "-" ) prefix_unary
               | postfix_unary ;
 postfix_unary → primary ("++" | "--")
