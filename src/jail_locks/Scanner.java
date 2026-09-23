@@ -91,6 +91,9 @@ class Scanner {
       case ';':
         addToken(SEMICOLON);
         break;
+      case '%':
+        addToken(MODULO);
+        break;
       case '*':
         addToken(match('=') ? MUL_EQUAL : STAR);
         break;
@@ -154,7 +157,7 @@ class Scanner {
             }
           }
           if (!stack.isEmpty()) {
-            Lox.error(line, "comment-block isn't closed properly.");
+            Lox.error(line, "comment-block isn't closed properly");
           }
         }
         //---
@@ -182,7 +185,7 @@ class Scanner {
         } else if (isAlpha(c)) {
           identifier();
         } else {
-          Lox.error(line, "Unexpected character.");
+          Lox.error(line, "Unexpected character");
         }
     }
   }
@@ -217,7 +220,7 @@ class Scanner {
     }
 
     if (isAtEnd()) {
-      Lox.error(line, "Unterminated string.");
+      Lox.error(line, "Unterminated string");
       return;
     }
 

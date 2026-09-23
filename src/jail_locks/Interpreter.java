@@ -309,6 +309,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         checkNumberOperands(expr.operator, left, right);
         yield (double) left * (double) right;
       }
+      case MODULO -> {
+        checkNumberOperands(expr.operator, left, right);
+        yield (double) left % (double) right;
+      }
       case COMMA -> right; // C/C++ ','-operator functionality.
       //--------------------------
       default ->

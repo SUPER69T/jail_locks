@@ -318,7 +318,7 @@ class Parser {
   private Expr factor() { // (left-associative).
     Expr expr = prefix_unary();
 
-    while (match(SLASH, STAR)) {
+    while (match(SLASH, STAR, MODULO)) {
       Token operator = previous();
       Expr right = prefix_unary();
       expr = new Expr.Binary(expr, operator, right);
