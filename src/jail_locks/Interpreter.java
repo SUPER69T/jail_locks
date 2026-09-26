@@ -1,13 +1,35 @@
 package jail_locks;
 
+import java.util.ArrayList;
 import java.util.List;
 
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
-  private Environment environment = new Environment();
+  // defining the global-scope on interpreter's initialization:
+  final Environment globals = new Environment();
+  private Environment environment = globals;
+  //
   private final boolean isRepl;
 
+  // constructor:
   Interpreter(boolean isRepl) {
     this.isRepl = isRepl;
+
+    // defined native functions:
+    //---
+    globals.define("clock", new LoxCallable() {
+      @Override
+      public int arity() { return 0; }
+
+      @Override
+      public Object call(Interpreter interpreter,
+                         List<Object> arguments) {
+        return (double)System.currentTimeMillis() / 1000.0;
+      }
+
+      @Override
+      public String toString() { return "<native fn>"; }
+    });
+    //---
   }
 //-----------------------------------------------------
   void interpret(List<Stmt> statements) {
@@ -24,14 +46,20 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   * execute a Stmt.
   */
   private void execute(Stmt stmt) {
-    stmt.accept(this); // 'this' refers to the 'Interpreter' instance.
+    stmt.accept(this); // 'this' refers to the 'Interpreter' instance himself. =>
+    // that in terms calls the '(Expr/Stmt).java'-subclass's own .accept()-method, which =>
+    // "rewires" the call back to the correct shape call:
+    // InterpreterInstance.ImplementedVisitorMethod((Expr/Stmt)subclassInstance)
+    // example being: passing: expr = Expr.Literal literal, this = Interpreter interpreter
+    // 'literal.call(interpreter)' turns into: 'interpreter.visitLiteralExpr(literal)'
+    // to be clear: in this case ImplementedVisitorMethod = visitLiteralExpr().
   }
 
   /**
   * evaluate an Expr.
   */
-  private Object evaluate(Expr expr) { // 'evaluate' gets called when an expression's =>
-    // value is required, as described in lox's EBNF grammar rules.
+  protected Object evaluate(Expr expr) { // 'evaluate' gets called when an =>
+    // expression's value is required, as described in lox's EBNF grammar rules.
     return expr.accept(this);
   }
 //-----------------------------------------------------
@@ -46,6 +74,17 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       System.out.println(stringify(temp));
     }
 
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitFunctionStmt(Stmt.Function stmt) {
+    // conversion of the Stmt.Function to a full LoxFunction-object =>
+    // that implements: constructor (dah), arity(), call(), toString():
+    LoxFunction function = new LoxFunction(stmt);
+
+    // saving that function object in the current environment:
+    environment.define(stmt.name.lexeme, function); // 'name' is the IDENTIFIER
     return null;
   }
 //-----------------------------------------------------
@@ -89,9 +128,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       while (isTruthy(evaluate(stmt.condition))) {
         try {
           execute(stmt.body);
-        } catch (BREAK_abusing_RuntimeExceptions e) { // detected a 'break'-statement:
+        } catch (BREAK e) { // detected a 'break'-statement:
           break;
-        } catch (CONTINUE_abusing_RuntimeExceptions e) { // detected a 'continue'-statement:
+        } catch (CONTINUE e) { // detected a 'continue'-statement:
           continue;
         }
       }
@@ -106,9 +145,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       try {
           if (stmt.body != null) execute(stmt.body);
           if (stmt.increment != null) evaluate(stmt.increment);
-        } catch (BREAK_abusing_RuntimeExceptions e) { // detected a 'break'-statement:
+        } catch (BREAK e) { // detected a 'break'-statement:
           break;
-        } catch (CONTINUE_abusing_RuntimeExceptions e) { // detected a 'continue'-statement:
+        } catch (CONTINUE e) { // detected a 'continue'-statement:
           if (stmt.increment != null) evaluate(stmt.increment);
           continue;
         }
@@ -119,8 +158,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitLoopFlowCtrlStmt(Stmt.LoopFlowCtrl stmt) {
     switch (stmt.instruction.type) {
-    case BREAK -> throw new BREAK_abusing_RuntimeExceptions();
-    case CONTINUE -> throw new CONTINUE_abusing_RuntimeExceptions();
+    case BREAK -> throw new BREAK();
+    case CONTINUE -> throw new CONTINUE();
     }
     return null;
   }
@@ -323,6 +362,41 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         // Unreachable.
         null;
     };
+  }
+//-----------------------------------------------------
+  @Override
+  public Object visitCallExpr(Expr.Call expr) {
+    // fetching the LoxFunction object from the environment =>
+    // using it's assigned IDENTIFIER.name string as the key:
+    Object callee = evaluate(expr.callee);
+
+    // evaluating the arguments and adding them to the List:
+    List<Object> arguments = new ArrayList<>();
+    for (Expr argument : expr.arguments) {
+      arguments.add(evaluate(argument));
+    }
+
+    // robert chose to evaluate the arguments before evaluating =>
+    // the 'function' expression itself. an architectural decision =>
+    // that makes sense because Lox does support side effects taking =>
+    // place inside the 'arguments' block, before the function call =>
+    // evaluates, making it a natural decision:
+    //---
+    if (!(callee instanceof LoxCallable)) {
+      throw new RuntimeError(expr.paren,
+          "Can only call functions and classes");
+    }
+    LoxCallable function = (LoxCallable)callee;
+    //---
+
+    // arity check: ( (arguments.arity == parameters.arity)? ):
+    if (arguments.size() != function.arity()) {
+      throw new RuntimeError(expr.paren, "Expected " +
+          function.arity() + " arguments but got " +
+          arguments.size());
+    }
+
+    return function.call(this, arguments);
   }
 //-----------------------------------------------------
   @Override

@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class Lox {
-    private static Interpreter interpreter;
+    protected static Interpreter interpreter;
 
     static boolean hadError = false;
     static boolean hadRuntimeError = false;

@@ -2,7 +2,8 @@ package jail_locks;
 
 abstract class Expr_commented {
 //----------------------------------
-  interface Visitor<R> {
+  interface Visitor<R> { // =>
+    // R = 'Object' in Expr.Visitor's case, and 'Void' in Stmt.Visitor's case.
     R visitBinaryExpr(Binary expr);
     R visitTernaryExpr(Ternary expr);
     R visitGroupingExpr(Grouping expr);
@@ -25,7 +26,9 @@ abstract class Expr_commented {
     @Override
     <R> R accept(Visitor<R> visitor) {
       return visitor.visitBinaryExpr(this); // 'this' here refers to the specific =>
-      // ('Expr' / Expr's child-class)-object which made the 'accept' method call.
+      // (Expr's child-class)-object which made the 'accept' method call.
+      // this object is the one that is holding the declared field values, which =>
+      // the Interpreter then evaluates using it's implemented visitormethod.
     }
 
     final Expr left;

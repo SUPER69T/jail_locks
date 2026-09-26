@@ -1,0 +1,53 @@
+I was thinking to myself how smart I was for trying to implement default
+arguments into Lox by allowing them to be declared anywhere I wanted in
+the parameters list (unlike Lisp Machine, MDL, MacLisp...), just to arrive
+to the same conclusion as 1970s MIT researchers did about 50 years ago:
+by allowing defaults to be declared at any position the complication of
+regular defaults, which is having to calculate the new function's arity
+by - now a range of possible input parameters, requires an additional
+tracking of the exact positions of such declared default-parameters for
+the possibility of different combinations of positional assignment of
+arguments to satisfy the same parameters list, forcing runtime evaluation
+to deal with an ambiguous decision to make.
+
+//------------------------------------
+example:
+
+// declaration:
+fun dosomtng (a, b = 1, c, d = 2, e) {}
+
+// invocation:
+dosomtng (3, 4, 5, 6)
+//------------------------------------
+// combination 1:
+fun dosomtng (3, 4, 5, d = 2, 6) {}
+
+// combination 2:
+fun dosomtng (3, b = 1, 4, 5, 6) {}
+//------------------------------------
+
+bad solutions:
+1. introducing additional metadata at function declaration, tracking the
+exact positions of such optional/default assignment expressions (that's
+only the first part, cause pushing default positional evaluation to runtime
+will only make the interpreter so much slower...), and then either:
+A. forcing each call on a function of this type to calculate all possible
+matching args-params combinations and choosing the one that fills passed
+arguments from left to right, which is a dumb architectural decision in the
+likes of some bullshit the javascript compiler would do, and I hate this
+idea and completely disagree with it, or...
+B. force the user to pass an exact number of arguments, even when defaults
+exist, and possibly provide a special argument type like: "oPtIoNaL", to
+indicate to the LoxFunction that this exact positional argument is the one
+that should be kept as default, which IMO completely negates the original
+idea of even allowing optional/default parameters to exist and provide the
+user with the freedom of assigning them or not.
+
+good solution:
+fuck it, #keep_it_simple_silly, it isn't worth through the effort or
+ruining interpretation/compilation times and introducing additional
+overhead for the sake of solving a problem nobody but me had when I was
+writing python and thinking to myself: "huh, wouldn't it be nice if I -
+could just keep the same order or parameters I want and not pushing the -
+default once to the end... what a weird quirk, I wonder why it works this
+way..."

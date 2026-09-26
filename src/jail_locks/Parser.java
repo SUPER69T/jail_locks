@@ -20,10 +20,10 @@ class Parser {
   Parser(List<Token> tokens) {
     this.tokens = tokens;
   }
-
 //---------------------------------------------------------------
 // HERE STARTS THE 'program -> expression' AST abstraction layer:
 //---------------------------------------------------------------
+
   List<Stmt> parse() {
     List<Stmt> statements = new ArrayList<>();
     while (!isAtEnd()) {
@@ -35,6 +35,7 @@ class Parser {
 //-----------------------------------------------------
   private Stmt declaration() {
     try {
+      if (match(FUN)) return function("function");
       if (match(VAR)) return varDeclaration();
       return statement();
     } catch (ParseError e) {
@@ -44,15 +45,47 @@ class Parser {
   }
 //-----------------------------------------------------
   private Stmt statement() {
-    if (match(FOR)) return forStatement();
-    if (match(IF)) return ifStatement();
-    if (match(PRINT)) return printStatement();
-    if (match(WHILE)) return whileStatement();
-    if (match(LEFT_BRACE)) return new Stmt.Block(block(), true);
-    if (match(EXIT)) return new Stmt.Exit();
-    if (match(BREAK, CONTINUE)) return loopFlowStatement();
+    return switch (peek().type) {
+      case FOR -> {
+        advance();
+        yield forStatement();
+      } case IF -> {
+          advance();
+          yield ifStatement();
+        } case PRINT -> {
+            advance();
+            yield printStatement();
+          } case WHILE -> {
+              advance();
+              yield whileStatement();
+            } case LEFT_BRACE -> {
+                advance();
+                yield new Stmt.Block(block(), true);
+              } case EXIT -> {
+                  advance();
+                  yield new Stmt.Exit();
+                } case BREAK, CONTINUE -> {
+                    advance();
+                    yield loopFlowStatement();
+                  }
 
-    return expressionStatement();
+                  default -> expressionStatement();
+    };
+    // robert was using a bunch of 'if' conditions, which may be due to =>
+    // him writing this code early-on, before the enhanced-switch came =>
+    // to java, which was around 2020 if google is right.
+    // robert's old code (+my additions to jlox):
+    //---
+//    if (match(FOR)) return forStatement();
+//    if (match(IF)) return ifStatement();
+//    if (match(PRINT)) return printStatement();
+//    if (match(WHILE)) return whileStatement();
+//    if (match(LEFT_BRACE)) return new Stmt.Block(block(), true);
+//    if (match(EXIT)) return new Stmt.Exit();
+//    if (match(BREAK, CONTINUE)) return loopFlowStatement(); // 'break' / 'continue'.
+//
+//    return expressionStatement();
+    //---
   }
 //-----------------------------------------------------
   private Stmt forStatement() {
@@ -164,7 +197,86 @@ class Parser {
     return new Stmt.Expression(expr);
   }
 //-----------------------------------------------------
+  private Stmt.Function function(String kind) {
+    Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
+    consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+    List<Token> parameters = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (parameters.size() >= 255) {
+          error(peek(), "Can't have more than 255 parameters.");
+        }
 
+        parameters.add(
+            consume(IDENTIFIER, "Expect parameter name."));
+      } while (match(COMMA));
+    }
+    consume(RIGHT_PAREN, "Expect ')' after parameters.");
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    List<Stmt> body = block();
+    return new Stmt.Function(name, parameters, body);
+  }
+
+// NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
+//  private Stmt.Function function(String kind) { // kind is ("function"/"method")
+//    Token name = consume(IDENTIFIER, "Expect " + kind + " name");
+//    Token parameter;
+//    Token rvalue_tkn;
+//    boolean defaults = false;
+//
+//    consume(LEFT_PAREN, "Expect '(' after " + kind + " name");
+//    List<Token> parameters = new ArrayList<>();
+//    if (!check(RIGHT_PAREN)) { // if 'false', the function was declared with 0 parameters.
+//      // else:
+//      do { // example: fun dosomtng(A, B = 5);
+//        if (parameters.size() >= 255) {
+//          error(peek(), "Can't have more than 255 parameters");
+//        } // A,B|
+//        parameter = consume(IDENTIFIER, "Expect parameter name");
+//
+//        if (peek().type == EQUAL) { // =>
+//        // detected the start of the default parameters
+//          defaults = true;
+//          break;
+//        }
+//        parameters.add(parameter); // parameters = [IDENTIFIER(A)]
+//
+//      } while (match(COMMA));
+//    }
+//
+//    if (defaults) {
+//      // assigning default parameters:
+//      //---
+//      current--; // unwinding back to the 'IDENTIFIER' right before the first '='.
+//      do {
+//        if (parameters.size() >= 255) {
+//          error(peek(), "Can't have more than 255 parameters");
+//        } // B  |
+//        parameter = consume(IDENTIFIER, "Expect parameter name");
+//
+//        if (match(EQUAL)) {
+//          if (match(NUMBER, STRING)) {
+//            rvalue_tkn = previous(); //  |       B       |  |        5       |  |      1      |
+//            parameter = new Token(EQUAL, parameter.lexeme, rvalue_tkn.literal, rvalue_tkn.line);
+//          }
+//          error(parameter, "default parameters can only be assigned rvalues of types: 'NUMBER' / 'STRING'.");
+//        }
+//        else error(peek(), "cannot declare positional arguments after defaults");
+//
+//        parameters.add(parameter); // parameters = [tkn(A),tkn(B,5)]
+//
+//      } while (match(COMMA));
+//      //---
+//    }
+//    consume(RIGHT_PAREN, "Expect ')' after parameters");
+//
+//    consume(LEFT_BRACE, "Expect '{' before " + kind + " body");
+//
+//    List<Stmt> body = block();
+//    return new Stmt.Function(name, parameters, body);
+//  }
+//-----------------------------------------------------
   /**
    * @return a list of all declarations within the new "{'...'}" scope =>
    * for the visitBlockStmt to execute within the new inner-environment.
@@ -179,10 +291,10 @@ class Parser {
     consume(RIGHT_BRACE, "Expect '}' after block");
     return statements;
   }
-
 //---------------------------------------------------------------
 // HERE STARTS THE 'expression -> primary' AST abstraction layer:
 //---------------------------------------------------------------
+
   private Expr expression() {
     return comma();
   }
@@ -347,9 +459,9 @@ class Parser {
 
     return postfix_unary();
   }
-
+//-----------------------------------------------------
   private Expr postfix_unary() {
-    Expr expr = primary();
+    Expr expr = call();
 
     while (match(INCREMENT, DECREMENT)) {
       Token operator = previous();
@@ -359,13 +471,58 @@ class Parser {
 
       // in case of the left expression being a variable that requires reassignment:
       if (expr instanceof Expr.Variable) {
-      Token name = ((Expr.Variable)expr).name;
+      Token name = ((Expr.Variable)expr).name; //      |(PLUS/MINUS)|
       expr = new Expr.Assign(name, new Expr.Binary(expr, binary_op, new Expr.Literal(1.0)));
       } else { // in case of a regular AST expression node we follow C++'s steps and throw:
         error(operator, "Invalid assignment target before the '" + operator.lexeme + "' operator");
       }
     }
     return expr;
+  }
+//-----------------------------------------------------
+  private Expr call() {
+    Expr expr = primary(); // to parse a valid function, the given =>
+    // 'expr' should be a Token of type: 'IDENTIFIER'.
+
+    while (true) {
+      if (match(LEFT_PAREN)) {
+        expr = finishCall(expr);
+      } else {
+        break;
+      }
+    }
+
+    return expr;
+  }
+  private Expr finishCall(Expr callee) {
+    List<Expr> arguments = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (arguments.size() >= 255) {
+          error(peek(), "Can't have more than 255 arguments");
+        }
+        // building an AST subtree for each argument passed to the call.
+        // Lox allows a function argument to be of any evaluated type:
+        arguments.add(assignment()); // =>
+      } while (match(COMMA)); // compared to the function() parsing rule =>
+      // the finishCall() method makes an additional call to parse any =>
+      // additional expressions that are being passed-in as arguments, which =>
+      // in robert's original code meant calling the expression()-rule that =>
+      // (SURPRISE SURPRISE) - holds the (challenge's) comma()-rule right =>
+      // beneath it (expression < comma) and higher in precedence, which meant =>
+      // that anytime a function call with multiple arguments would be passed =>
+      // the 'COMMA' Tokens that separate the arguments would themselves be =>
+      // parsed into the AST-node, building a single larger AST node, that =>
+      // evaluates to the furthest-more argument's value, and violating the =>
+      // (params.arity == args.arity) check at 'visitCallExpr()', throwing a =>
+      // RuntimeError with a massage like "Expected 2 arguments but got 1".
+    }
+
+    Token paren = consume(RIGHT_PAREN,
+                          "Expect ')' after arguments");
+// for that bound by the environment to =>
+    // a function, or a method  (classes that implement LoxCallable).
+    return new Expr.Call(callee, paren, arguments);
   }
 //-----------------------------------------------------
   private Expr primary() {
