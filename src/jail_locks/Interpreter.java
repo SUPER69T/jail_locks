@@ -81,7 +81,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   public Void visitFunctionStmt(Stmt.Function stmt) {
     // conversion of the Stmt.Function to a full LoxFunction-object =>
     // that implements: constructor (dah), arity(), call(), toString():
-    LoxFunction function = new LoxFunction(stmt);
+    LoxFunction function = new LoxFunction(stmt, environment);
 
     // saving that function object in the current environment:
     environment.define(stmt.name.lexeme, function); // 'name' is the IDENTIFIER
@@ -103,6 +103,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Object value = evaluate(stmt.expression);
     System.out.println(stringify(value));
     return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitReturnStmt(Stmt.Return stmt) {
+    Object value = null;
+    if (stmt.value != null) value = evaluate(stmt.value);
+
+    throw new Return(value);
   }
 //-----------------------------------------------------
 

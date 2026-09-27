@@ -4,10 +4,13 @@ import java.util.List;
 
 class LoxFunction implements LoxCallable {
   private final Stmt.Function declaration;
+  private final Environment closure;
+
 
   // constructor:
-  LoxFunction(Stmt.Function declaration) { // used with 'visitFunctionStmt()'.
+  LoxFunction(Stmt.Function declaration, Environment closure) {  // used with 'visitFunctionStmt()'.
     this.declaration = declaration;
+    this.closure = closure;
   }
 
   @Override
@@ -17,7 +20,7 @@ class LoxFunction implements LoxCallable {
 
   @Override
   public Object call(Interpreter interpreter, List<Object> arguments) { // used with 'visitCallExpr()'.
-    Environment environment = new Environment(interpreter.globals);
+    Environment environment = new Environment(closure); // using the closure's environment scope.
 
     for (int i = 0; i < declaration.params.size(); i++) {
       environment.define(declaration.params.get(i).lexeme, arguments.get(i)); // =>
@@ -25,7 +28,12 @@ class LoxFunction implements LoxCallable {
       //              | declaration |    |     call    |
     }
 
-    interpreter.executeBlock(declaration.body, environment);
+    try {
+      interpreter.executeBlock(declaration.body, environment);
+    } catch (Return returnValue) {
+      return returnValue.value;
+    }
+    // default (no return):
     return null;
   }
 

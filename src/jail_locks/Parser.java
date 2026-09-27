@@ -55,21 +55,24 @@ class Parser {
         } case PRINT -> {
             advance();
             yield printStatement();
-          } case WHILE -> {
+          } case RETURN -> {
               advance();
-              yield whileStatement();
-            } case LEFT_BRACE -> {
+              yield returnStatement();
+            } case WHILE -> {
                 advance();
-                yield new Stmt.Block(block(), true);
-              } case EXIT -> {
+                yield whileStatement();
+              } case LEFT_BRACE -> {
                   advance();
-                  yield new Stmt.Exit();
-                } case BREAK, CONTINUE -> {
+                  yield new Stmt.Block(block(), true);
+                } case EXIT -> {
                     advance();
-                    yield loopFlowStatement();
-                  }
+                    yield new Stmt.Exit();
+                  } case BREAK, CONTINUE -> {
+                      advance();
+                      yield loopFlowStatement();
+                    }
 
-                  default -> expressionStatement();
+                    default -> expressionStatement();
     };
     // robert was using a bunch of 'if' conditions, which may be due to =>
     // him writing this code early-on, before the enhanced-switch came =>
@@ -138,6 +141,17 @@ class Parser {
     Expr value = expression();
     consume(SEMICOLON, "Expect ';' after value");
     return new Stmt.Print(value);
+  }
+//-----------------------------------------------------
+    private Stmt returnStatement() {
+    Token keyword = previous();
+    Expr value = null;
+    if (!check(SEMICOLON)) {
+      value = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after return value");
+    return new Stmt.Return(keyword, value);
   }
 //-----------------------------------------------------
   /**

@@ -10,11 +10,12 @@ abstract class Stmt {
     R visitFunctionStmt(Function stmt);
     R visitIfStmt(If stmt);
     R visitPrintStmt(Print stmt);
-    R visitExitStmt(Exit stmt);
+    R visitReturnStmt(Return stmt);
     R visitVarStmt(Var stmt);
     R visitWhileStmt(While stmt);
     R visitForStmt(For stmt);
     R visitLoopFlowCtrlStmt(LoopFlowCtrl stmt);
+    R visitExitStmt(Exit stmt);
   }
 
   abstract <R> R accept(Visitor<R> visitor);
@@ -99,16 +100,20 @@ abstract class Stmt {
     final Expr expression;
   }
 //----------------------------------
-//-------------Exit:
-  static class Exit extends Stmt {
-    Exit() {
+//-------------Return:
+  static class Return extends Stmt {
+    Return(Token keyword, Expr value) {
+      this.keyword = keyword;
+      this.value = value;
     }
 
     @Override
     <R> R accept(Visitor<R> visitor) {
-      return visitor.visitExitStmt(this);
+      return visitor.visitReturnStmt(this);
     }
 
+    final Token keyword;
+    final Expr value;
   }
 //----------------------------------
 //-------------Var:
@@ -175,6 +180,18 @@ abstract class Stmt {
     }
 
     final Token instruction;
+  }
+//----------------------------------
+//-------------Exit:
+  static class Exit extends Stmt {
+    Exit() {
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitExitStmt(this);
+    }
+
   }
 //----------------------------------
 }
