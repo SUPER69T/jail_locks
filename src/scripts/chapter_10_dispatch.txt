@@ -1,0 +1,57 @@
+fun current_day (day) { // the variable 'day' is now declared as a =>
+// parameter of the 'current_day' function, right within it's scope =>
+// where the 'dispatch'-function lives. whenever we return 'dispatch' =>
+// without executing it, we bind its closure environment (the same =>
+// environment as 'current_day's where the local 'day' is declared) =>
+// to be the execution-environment whenever we call that 'dispatch' =>
+// outside (where we defined it as a variable), so its execution - =>
+// environment "stays alive" throughout our program, and is able to =>
+// keep updating that enclosed 'day' variable for as long as it's bound.
+
+  fun dispatch () {
+    day++;
+
+    if (day==1) {
+      return "sunday";
+    }
+    else if (day==2) {
+      return "monday";
+    }
+    else if (day==3) {
+      return "tuesday";
+    }
+    else if (day==4) {
+      return "wednesday";
+    }
+    else if (day==5) {
+      return "thursday";
+    }
+    else if (day==6) {
+      return "friday";
+    }
+    else if (day==7) {
+      day = 0;
+      return "saturday";
+    }
+    else { return "no such day exists"; }
+  }
+  return dispatch;
+}
+
+// declaring the dispatch to a local variable and initiating it =>
+// with the starting day being - 'monday':
+var next_day = current_day(2);
+var iterations = 10;
+
+while (0 < iterations) {
+  print next_day();
+  iterations--;
+}
+
+
+// on a deeper functional-programming note: the existence of closures =>
+// allows us to declare various 'containers' in Lox and enforce our =>
+// own modifications of such containers (List,Set/getters,setters...) =>
+// all before implementing classes, objects, and 'native containers' =>
+// as declared in java itself. in other words: it's a big step =>
+// towards the autonomy of jail_locks as an expressive toy-FP-language.

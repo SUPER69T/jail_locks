@@ -396,11 +396,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     // place inside the 'arguments' block, before the function call =>
     // evaluates, making it a natural decision:
     //---
-    if (!(callee instanceof LoxCallable)) {
+    if (!(callee instanceof LoxCallable function)) {
       throw new RuntimeError(expr.paren,
           "Can only call functions and classes");
     }
-    LoxCallable function = (LoxCallable)callee;
     //---
 
     // arity check: ( (arguments.arity == parameters.arity)? ):
