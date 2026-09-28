@@ -16,17 +16,18 @@ public class GenerateAst {
 
     // generating the 'Expr' abstract class:
     defineAst(outputDir, "Expr", Arrays.asList(
-      "Assign   : Token name, Expr value",
-      "Binary   : Expr left, Token operator, Expr right",
-      "Call     : Expr callee, Token paren, List<Expr> arguments", // arguments can both be Identifiers, =>
+      "Assign         : Token name, Expr value",
+      "Binary         : Expr left, Token operator, Expr right",
+      "Call           : Expr callee, Token paren, List<Expr> arguments", // arguments can both be Identifiers, =>
       // and any other expression that can be evaluated to a value in run-time.
-      "Ternary  : Expr left, Token question, Expr middle, Token colon, Expr right",
-      "Grouping : Expr expression",
-      "Literal  : Object value",
-      "Logical  : Expr left, Token operator, Expr right",
+      "Ternary        : Expr left, Token question, Expr middle, Token colon, Expr right",
+      "Grouping       : Expr expression",
+      "Literal        : Object value",
+      "Logical        : Expr left, Token operator, Expr right",
       "PrefixUnary    : Token operator, Expr right", // ...postFixUnary is desugared.
-      "Variable : Token name",
-      "Error    : Token errToken, List<Expr> subExpressions"
+      "Variable       : Token name",
+      "LambdaFunction : Token keyword, List<Token> params, List<Stmt> body", // params is a list of Identifiers.
+      "Error          : Token errToken, List<Expr> subExpressions"
     ));
 
     // generating the 'Stmt' abstract class:

@@ -1,4 +1,56 @@
 my answers:
+Q2.
+the way to do it was to declare a new AST-node for that new lambda-EXPRESSION, and then parse within the =>
+expressions parsing precedence-hierarchy, right at the bottom near 'primary()', and also modify the 'declaration()'-rule =>
+so that it can start parsing the 'function()'-statement-rule, or allow the 'lambdaFunction()'-expression-rule to later =>
+parse it himself.
 
+Q3.
+yep, in the same scope: LoxFunction.call() executes the function's body in the same 'closure' scope where the =>
+parameters were defined.
+
+this code will simply redefine that 'a' in the same scope as the 'a'-parameter's scope is defined in, acting as a default =>
+parameter value assignment.
+#---------------------------------------------------
 gemini's answers:
+Q1.
+the question I asked gemini:
+"
+need help with this challenge. I have no idea how smalltalk does anything and have never used this language. 
+all I know is that robert nystrom said this is a fully object oriented language.
+im guessing small talk might be calculating the number of arguments at function declaration-time instead of call-time?
+but calculating the number of arguments would still have to happen, so maybe the real answer is that it takes the =>
+EAFP principal approach and just starts binding arguments to parameters, and if there is extra on either side it =>
+throws some errors, instead of LBYL which would be making the checks before assigning the function variables? 
+"
+
+gemini's answer:
+"
+Your guesses are perfectly logical for languages with C-style syntax (like Lox, Java, or Python), where the =>
+EAFP (Easier to Ask for Forgiveness than Permission) principle is a very common strategy.But Smalltalk avoids the =>
+runtime performance cost mentioned in image_40924b.png by solving this at a fundamental structural level, right in =>
+its syntax.   Smalltalk doesn't have traditional function calls; instead, it sends "messages" to objects. 
+The crucial difference is that in Smalltalk, the arguments are interleaved directly into the name of the method =>
+itself.For example, in Lox or Java, a method call looks like this:dictionary.put(key, value);(The method's name is put, and =>
+it takes 2 arguments).
+In Smalltalk, that exact same call looks like this:dictionary at: key put: valueThe actual, literal name of this method in =>
+the compiler (called the "selector") is at:put:.implicit logic: The arity of the function is physically baked into the =>
+function's identifier.
+"
+
+Q3.
+"
+C, C++, and Java: These languages treat parameters and the function body's top-level variables as being in the exact =>
+same scope. 
+If you try to declare a local variable with the same name as a parameter, the compiler throws an error to prevent =>
+ambiguity.
+
+Python: Python uses function-level scope rather than block scope. 
+Parameters and local variables share the exact same local namespace dictionary.
+ If you assign a new value to a parameter's name inside the function, you aren't creating a shadowed variable in a =>
+ nested scope; you are just reassigning the existing variable.
+
+JavaScript: If you try to redeclare a parameter using let or const, JavaScript throws a SyntaxError (similar to Java).
+If you use the older var keyword, it silently overwrites the parameter (similar to Python).
+"
 #---------------------------------------------------

@@ -14,6 +14,7 @@ abstract class Expr {
     R visitLogicalExpr(Logical expr);
     R visitPrefixUnaryExpr(PrefixUnary expr);
     R visitVariableExpr(Variable expr);
+    R visitLambdaFunctionExpr(LambdaFunction expr);
     R visitErrorExpr(Error expr);
   }
 
@@ -167,6 +168,24 @@ abstract class Expr {
     }
 
     final Token name;
+  }
+//----------------------------------
+//-------------LambdaFunction:
+  static class LambdaFunction extends Expr {
+    LambdaFunction(Token keyword, List<Token> params, List<Stmt> body) {
+      this.keyword = keyword;
+      this.params = params;
+      this.body = body;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitLambdaFunctionExpr(this);
+    }
+
+    final Token keyword;
+    final List<Token> params;
+    final List<Stmt> body;
   }
 //----------------------------------
 //-------------Error:

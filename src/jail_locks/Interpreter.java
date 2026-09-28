@@ -3,6 +3,8 @@ package jail_locks;
 import java.util.ArrayList;
 import java.util.List;
 
+import static jail_locks.TokenType.LAMBDA_FUN;
+
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   // defining the global-scope on interpreter's initialization:
   final Environment globals = new Environment();
@@ -370,6 +372,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         // Unreachable.
         null;
     };
+  }
+//-----------------------------------------------------
+  public LoxFunction visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
+    return new LoxFunction(new Stmt.Function(new Token(LAMBDA_FUN, "lambda-function", null, expr.keyword.line), expr.params, expr.body), environment);
   }
 //-----------------------------------------------------
   @Override
