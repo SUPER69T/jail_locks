@@ -1,0 +1,17 @@
+var calc_primes = fun(n) {
+  var prime;
+  var half;
+  for (var i = 2; i <= n; i++) {
+    prime = true;
+    half = i/2 + 1;
+    for (var j = 2; j <= half; j++) {
+      if (i%j==0) {
+        prime = false;
+        break;
+      }
+    }
+    if (prime) print i;
+  }
+};
+
+calc_primes(50);

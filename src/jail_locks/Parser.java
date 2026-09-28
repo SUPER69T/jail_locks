@@ -20,6 +20,11 @@ class Parser {
   Parser(List<Token> tokens) {
     this.tokens = tokens;
   }
+
+  record FunctionParamsBodyPAIR (List<Token> params, List<Stmt> body) {} // =>
+  // this record is used by the finishFunction() helper method, for =>
+  // constructing both functions, methods, and lambda-functions.
+
 //---------------------------------------------------------------
 // HERE STARTS THE 'program -> expression' AST abstraction layer:
 //---------------------------------------------------------------
@@ -35,7 +40,10 @@ class Parser {
 //-----------------------------------------------------
   private Stmt declaration() {
     try {
-      if (match(FUN)) return function("function");
+      if (check(FUN) && checkNext(IDENTIFIER)){
+        advance();
+        return function("function");
+      }
       if (match(VAR)) return varDeclaration();
       return statement();
     } catch (ParseError e) {
@@ -213,7 +221,12 @@ class Parser {
 //-----------------------------------------------------
   private Stmt.Function function(String kind) {
     Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
-    consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+    FunctionParamsBodyPAIR paramsANDbodyPAIR = finishFunction(kind);
+    return new Stmt.Function(name, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body);
+  }
+  /// this one helper is used by both function() and lambdaFunction() production-rules.
+  private FunctionParamsBodyPAIR finishFunction(String kind) {
+        consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
     List<Token> parameters = new ArrayList<>();
     if (!check(RIGHT_PAREN)) {
       do {
@@ -229,7 +242,7 @@ class Parser {
 
     consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
     List<Stmt> body = block();
-    return new Stmt.Function(name, parameters, body);
+    return new FunctionParamsBodyPAIR(parameters, body);
   }
 
 // NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
@@ -495,7 +508,7 @@ class Parser {
   }
 //-----------------------------------------------------
   private Expr call() {
-    Expr expr = primary(); // to parse a valid function, the given =>
+    Expr expr = lambdaFunction(); // to parse a valid function, the given =>
     // 'expr' should be a Token of type: 'IDENTIFIER'.
 
     while (true) {
@@ -537,6 +550,15 @@ class Parser {
 // for that bound by the environment to =>
     // a function, or a method  (classes that implement LoxCallable).
     return new Expr.Call(callee, paren, arguments);
+  }
+//-----------------------------------------------------
+  private Expr lambdaFunction() {
+    if (match(FUN)) {
+      Token keyword = previous();
+      FunctionParamsBodyPAIR paramsANDbodyPAIR = finishFunction("lambda-function");
+      return new Expr.LambdaFunction(keyword, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body);
+    }
+    return primary();
   }
 //-----------------------------------------------------
   private Expr primary() {
@@ -670,10 +692,15 @@ class Parser {
     throw error(peek(), message);
   }
 
-  /// @return a comparison of the passed-in token-type, with the current token-type (without advancing).
+  /// comparing the passed-in token-type, with the current token-type (without advancing).
   private boolean check(TokenType type) {
     if (isAtEnd()) return false;
     return peek().type == type;
+  }
+  /// comparing the passed-in token-type, with the next token-type (without advancing).
+  private boolean checkNext(TokenType type) {
+    if (isAtEnd() | tokens.get(current+1).type == EOF) return false;
+    return tokens.get(current+1).type == type;
   }
 
   /// advances the token and returns the previous token (the token which just was the current).
