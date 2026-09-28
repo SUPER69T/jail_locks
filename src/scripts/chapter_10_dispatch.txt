@@ -30,7 +30,9 @@ fun current_day (day) { // the variable 'day' is now declared as a =>
       return "friday";
     }
     else if (day==7) {
-      day = 0;
+      day = day % 7; // should only turn a-7 to a-0 but defined it =>
+      // using modulo for extra range-safety-guards.
+
       return "saturday";
     }
     else { return "no such day exists"; }
