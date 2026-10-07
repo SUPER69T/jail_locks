@@ -17,6 +17,7 @@ class Parser {
   // the proper (BREAK/CONTINUE)-Token if currently nested within a loop, or throw =>
   // a ParseError for violating the Token's proper location rules.
 
+  // constructor:
   Parser(List<Token> tokens) {
     this.tokens = tokens;
   }
