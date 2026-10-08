@@ -8,7 +8,7 @@ import java.util.Stack;
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private final Interpreter interpreter;
-  private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+  private final Stack<Map<String, VariableStatus>> scopes = new Stack<>();
   private FunctionType currentFunction = FunctionType.NONE;
 
   // constructor:
@@ -21,57 +21,65 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     FUNCTION
   }
 
+  record VariableStatus (boolean defined, boolean used) {} // =>
+  // this record is used within the 'scopes'-stack, to track whether a =>
+  // variable has been initialized and used at stages in scope's life.
+
+  /// resolves every of the program's parsed statements
   void resolve(List<Stmt> statements) {
     for (Stmt statement : statements) {
       resolve(statement);
     }
   }
 
-  ///
+  /// resolves a statement. the process of 'resolution' in this context
+  /// means to make the recursive AST-traversal calls in order to track each
+  /// (statement/expression)'s usage to enforce static-semantic-rules,
+  /// not covered by the parser itself, like certain statement-usages only in
+  /// certain locations (return inside a function), and variable usage after
+  /// declaration, and so on...
   private void resolve(Stmt stmt) {
     stmt.accept(this);
   }
 
-  ///
+  /// resolves an expression. the process of 'resolution' in this context
+  /// means to make the recursive AST-traversal calls in order to track each
+  /// (statement/expression)'s usage to enforce static-semantic-rules,
+  /// not covered by the parser itself, like certain statement-usages only in
+  /// certain locations (return inside a function), and variable usage after
+  /// declaration, and so on...
   private void resolve(Expr expr) {
     expr.accept(this);
   }
 
-  private void resolveFunction(Stmt.Function function, FunctionType type) {
-    FunctionType enclosingFunction = currentFunction;
-    currentFunction = type;
-
-    beginScope();
-
-    for (Token param : function.params) {
-      declare(param);
-      define(param);
-    }
-    resolve(function.body);
-
-    endScope();
-
-    currentFunction = enclosingFunction;
-  }
-
-  ///
+  /// resolves local variables, which means calculating the depth-difference,
+  /// within the local-environments-tree, from the place where they were
+  /// called/used, to the place where they were declared, and saving that
+  /// distance in the interpreter class, for it to fetch/assign without the
+  /// need to recalculate that distance or recursively look it up at runtime.
   private void resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
       if (scopes.get(i).containsKey(name.lexeme)) {
+
         interpreter.resolve(expr, scopes.size() - 1 - i);
         return;
       }
     }
   }
 
-  ///
+  /// mimicking the start (opening) of a new scope inside the current one (the previous stack entry).
   private void beginScope() {
-    scopes.push(new HashMap<String, Boolean>());
+    scopes.push(new HashMap<String, VariableStatus>());
   }
 
-  ///
+  /// mimicking the end (closing) of the current scope.
   private void endScope() {
-    scopes.pop();
+    Map<String, VariableStatus> popped_scope = scopes.pop();
+    for (Map.Entry<String, VariableStatus> entry : popped_scope.entrySet()) {
+      if (entry.getValue().used == Boolean.FALSE) {
+
+      }
+    }
   }
 
   /// tracks the sequence of declaration in the current-(innermost)-scope
@@ -79,21 +87,25 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private void declare(Token name) {
     if (scopes.isEmpty()) return;
 
-    Map<String, Boolean> scope = scopes.peek();
+    Map<String, VariableStatus> scope = scopes.peek();
 
+    // Lox disallows 'variable-shadowing' within the same scope:
     if (scope.containsKey(name.lexeme)) {
       Lox.error(name,
           "Already a variable with this name in this scope.");
+    // bad example:
+    // var a = 1;
+    // var a = 2; <- this is considered wrong Lox-syntax.
     }
 
-    scope.put(name.lexeme, false);
+    scope.put(name.lexeme, new VariableStatus(false, false));
   }
 
   /// updating the flag to 'true', to mimic a properly declared
   /// variable-statement, after the initializer has been fully-resolved.
   private void define(Token name) {
     if (scopes.isEmpty()) return;
-    scopes.peek().put(name.lexeme, true);
+    scopes.peek().put(name.lexeme, new VariableStatus(true, false));
   }
 
   @Override
@@ -109,7 +121,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     resolve(stmt.expression);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitFunctionStmt(Stmt.Function stmt) {
     declare(stmt.name);
@@ -119,6 +131,23 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     return null;
   }
 
+  private void resolveFunction(Stmt.Function function, FunctionType type) {
+    FunctionType enclosingFunction = currentFunction; // ~FOR-FUTURE-USE~
+    currentFunction = type; // ~FOR-FUTURE-USE~
+
+    beginScope();
+
+    for (Token param : function.params) {
+      declare(param);
+      define(param);
+    }
+    resolve(function.body);
+
+    endScope();
+
+    currentFunction = enclosingFunction; // ~FOR-FUTURE-USE~
+  }
+//-----------------------------------------------------
   @Override
   public Void visitIfStmt(Stmt.If stmt) {
     resolve(stmt.condition);
@@ -164,6 +193,29 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitForStmt(Stmt.For stmt) {
+    resolve(stmt.initializer);
+    resolve(stmt.condition);
+    resolve(stmt.increment);
+    resolve(stmt.body);
+    return null;
+  }
+
+  @Override
+  public Void visitLoopFlowCtrlStmt(Stmt.LoopFlowCtrl stmt) { // =>
+    // have already implemented the loop-depth checks in the parser, =>
+    // before implementing the 'Resolver', so no use rechecking it here.
+    return null;
+  }
+
+  @Override
+  public Void visitExitStmt(Stmt.Exit stmt) { // =>
+    // the exit statement has no rules or semantics - wherever it is =>
+    // thrown, the program immediately stop running.
+    return null;
+  }
+
+  @Override
   public Void visitAssignExpr(Expr.Assign expr) {
     resolve(expr.value);
     resolveLocal(expr, expr.name);
@@ -185,6 +237,14 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
       resolve(argument);
     }
 
+    return null;
+  }
+
+  @Override
+  public Void visitTernaryExpr(Expr.Ternary expr) { //NOTE: is this all?:
+    resolve(expr.left);
+    resolve(expr.middle);
+    resolve(expr.right);
     return null;
   }
 
@@ -214,12 +274,39 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   @Override
   public Void visitVariableExpr(Expr.Variable expr) {
-    if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
+    // Lox disallows 'variable-self-referencing':
+    if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme).defined == Boolean.FALSE) {
       Lox.error(expr.name,
           "Can't read local variable in its own initializer.");
+    // bad examples:
+    // 1. var a = a; <- even if 'a' could be allowed to redeclare itself =>
+    // again within that same scope, and it would have been declared =>
+    // before self-referencing, this syntax should not be allowed within =>
+    // Lox, and rightfully so...
+    //
+    // 2. var a = {var b = a;}; <- this type of chained assignment does =>
+    // not cause self-referencing, but rather the pure use of a variable =>
+    // before it has been fully initialized.
     }
 
     resolveLocal(expr, expr.name);
+    scopes.peek().put(expr.name.lexeme, new VariableStatus(scopes.peek().get(expr.name.lexeme).defined, false));
+
+    return null;
+  }
+
+  @Override
+  public Void visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
+    declare(expr.);
+    define(stmt.name);
+
+    resolveFunction(stmt, FunctionType.FUNCTION);
+    return null;
+  }
+
+  @Override
+  public Void visitErrorExpr(Expr.Error expr) { //NOTE: I have yet to =>
+    // use this AST-node for something useful. is this the time?
     return null;
   }
 }

@@ -1,4 +1,34 @@
 my answers:
+1.
+because function declaration doesn't actually run the code immediately at declaration (allows some intended behavior like =>
+self-referencing -> using recursive function calls at runtime...
+unlike variable declaration with an initializer which immediately requires the evaluation of the rvalue in order to assign =>
+it to the variable, and are not allowed to self-reference at declaration.
 
+2.
+tried some code but gemini's answer sums it up better.
+and yeah, sure, i agree- safety in this case is much more valuable, and ofcourse C/C++ find a way to make memory-safety =>
+violations in any way possible, which is exactly why safer alternatives exist, and for good reason.
+#-------------------------------------------------------------------------------------------------------------------------------------------------------
 gemini's answers:
-#---------------------------------------------------
+2.
+If you try int a = 5; { int a = a; } in C, C++, or Java, the code actually compiles without a redefinition error because the =>
+inner a legally shadows the outer a. 
+However, how those languages handle the RHS (a referencing itself) varies wildly:
+
+Java: Throws a compile-time error ("illegal forward reference") if you try to initialize a local variable with itself in the =>
+same block. 
+It tracks variable initialization status at compile time.
+
+Python: Does not have block scope, so writing a = "outer"; { a = a } just reassigns the global/local a using its existing =>
+outer value, resulting in a = "outer".
+ But if you do a = a during a brand new function-scoped local definition where a wasn't previously defined, it throws an =>
+ UnboundLocalError at runtime.
+ 
+ C / C++: Allows it entirely, but with dangerous undefined behavior. 
+ In C, int a = a; initializes a with whatever garbage value happens to reside in that stack memory slot.
+
+Lox's choice (throwing a compile-time/static error via the Resolver) is arguably the safest and most sensible approach. 
+It prevents silent bugs, catches typos where you meant to use an outer variable but accidentally referenced the 
+uninitialized inner one, and avoids undefined memory states.
+#-------------------------------------------------------------------------------------------------------------------------------------------------------

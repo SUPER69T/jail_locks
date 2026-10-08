@@ -13,7 +13,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   private Environment environment = globals;
   //
 
-  //:
+  // encoding the 'upward-depth' of each variable usage compared to it's =>
+  // declared location within the scopes-hierarchy:
   private final Map<Expr, Integer> locals = new HashMap<>();
   //
 
@@ -51,9 +52,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
   }
 
-  /**
-  * execute a Stmt.
-  */
+  /// execute a Stmt.
   private void execute(Stmt stmt) {
     stmt.accept(this); // 'this' refers to the 'Interpreter' instance himself. =>
     // that in terms calls the '(Expr/Stmt).java'-subclass's own .accept()-method, which =>
@@ -64,22 +63,21 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     // to be clear: in this case ImplementedVisitorMethod = visitLiteralExpr().
   }
 
-  void resolve(Expr expr, int depth) {
-    locals.put(expr, depth);
-  }
-
-  /**
-  * evaluate an Expr.
-  */
+  /// evaluate an Expr.
   protected Object evaluate(Expr expr) { // 'evaluate' gets called when an =>
     // expression's value is required, as described in lox's EBNF grammar rules.
     return expr.accept(this);
   }
+
+  /// a method for saving the variable 'depth'-distance between a =>
+  /// variable's usage to it's declaration in the scope-environments- =>
+  /// -hierarchy. the 'depth' calculation is done by the 'Resolver'.
+  void resolve(Expr expr, int depth) {
+    locals.put(expr, depth);
+  }
 //-----------------------------------------------------
-  /**
-  * in REPL mode: evaluates the statement-expression and prints it to stdout.
-  * in non-REPL mode (script): only evaluates the expression.
-  */
+  /// in REPL mode: evaluates the statement-expression and prints it to =>
+  /// stdout. in non-REPL mode (script): only evaluates the expression.
   @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
     Object temp = evaluate(stmt.expression);
@@ -127,9 +125,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
 
-  /**
-  * for defining new variables in the current environment.
-  */
+  /// for defining new variables in the current environment.
   @Override
   public Void visitVarStmt(Stmt.Var stmt) {
     Object value = null;
@@ -226,9 +222,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     return value;
   }
 //-----------------------------------------------------
-  /**
-  * for fetching an existing variable's value.
-  */
+  /// fetches a variable's value from the environments-hierarchy:
   @Override
   public Object visitVariableExpr(Expr.Variable expr) {
     // OLD: return environment.get(expr.name);
@@ -239,8 +233,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Integer distance = locals.get(expr);
     if (distance != null) {
       return environment.getAt(distance, name.lexeme);
-    } else {
-      return globals.get(name);
+    } else { // Lox allows for the use of 'late-binding' for global- =>
+      // -variables, which is why the Resolver doesn't bother checking =>
+      // the global scope if a variable isn't found in the scopes-stack.
+
+      return globals.get(name); // =>
+      // a variable that hasn't been declared at all will fall through =>
+      // into the 'Environment's .get() methods, which will throw the =>
+      // corresponding "Undefined variable..." RuntimeError.
     }
   }
 //-----------------------------------------------------
@@ -289,10 +289,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Object right = evaluate(expr.right);
 
     return switch (expr.operator.type) {
-        //--------------------------
-        // challenge:
-        // implementing lexical string comparisons in lox:
-        //---
+      //--------------------------
+      // challenge:
+      // implementing lexical string comparisons in lox:
+      //---
       case GREATER -> {
         if (left instanceof Double && right instanceof Double) {
           yield (double) left > (double) right;
@@ -401,6 +401,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     };
   }
 //-----------------------------------------------------
+  @Override
   public LoxFunction visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
     return new LoxFunction(new Stmt.Function(new Token(LAMBDA_FUN, "lambda-function", null, expr.keyword.line), expr.params, expr.body), environment);
   }
@@ -478,9 +479,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     return object.toString();
   }
 
-  /**
-  * defines what boolean values does jlox primitives / objects(?) return.
-  */
+  ///defines what boolean values does jlox primitives / objects(?) return.
   private boolean isTruthy(Object object) {
     if (object == null) return false;
     if (object instanceof Boolean) return (boolean)object;

@@ -165,7 +165,7 @@ class Parser {
 //-----------------------------------------------------
   /**
   * @RETURNS: a node representing the declaration-statement
-  * of a new variable in the environments-hierarchy.
+  * of a new variable in the current environment.
   */
   private Stmt varDeclaration() {
 

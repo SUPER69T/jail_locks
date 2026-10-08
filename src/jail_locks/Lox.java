@@ -13,6 +13,8 @@ public class Lox {
 
     static boolean hadError = false;
     static boolean hadRuntimeError = false;
+    static boolean hadWarning = false;
+    static boolean hadRuntimeWarning = false;
 
   public static void main(String[] args) throws IOException {
     if (args.length > 1) {
@@ -68,6 +70,8 @@ public class Lox {
     // Stop if there was a resolution error.
     if (hadError) return;
 
+
+    // NOTE: run-time starts here..:
     interpreter.interpret(statements);
   }
 
@@ -92,5 +96,9 @@ public class Lox {
     System.err.println(error.getMessage() +
         "\n[line " + error.token.line + "]");
     hadRuntimeError = true;
+  }
+
+  static void warning(int line, String message) {
+    System.err.println("[line " + line + "] Error" + where + ": " + message + ".");
   }
 }
