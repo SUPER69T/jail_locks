@@ -8,23 +8,38 @@ import java.util.Stack;
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private final Interpreter interpreter;
-  private final Stack<Map<String, VariableStatus>> scopes = new Stack<>();
+  private final Stack<Map<String, VariableState>> scopes = new Stack<>();
   private FunctionType currentFunction = FunctionType.NONE;
 
   // constructor:
+  //---
   Resolver(Interpreter interpreter) {
     this.interpreter = interpreter;
   }
+  //---
 
   private enum FunctionType {
     NONE,
-    FUNCTION
+    FUNCTION,
+    METHOD,
+    LAMBDA
   }
 
-  record VariableStatus (boolean defined, boolean used) {} // =>
-  // this record is used within the 'scopes'-stack, to track whether a =>
-  // variable has been initialized and used at stages in scope's life.
+  /// this class is used within the 'scopes'-stack, to track whether a
+  /// variable has been initialized and used at stages in the scope's life.
+  private static class VariableState {
+    final Token token;
+    boolean defined;
+    boolean used;
 
+    VariableState(Token token, boolean defined) {
+        this.token = token;
+        this.defined = defined;
+        this.used = false;
+    }
+}
+
+//-----------------------------------------------------
   /// resolves every of the program's parsed statements
   void resolve(List<Stmt> statements) {
     for (Stmt statement : statements) {
@@ -60,34 +75,39 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private void resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
       if (scopes.get(i).containsKey(name.lexeme)) {
-
+        // saving the scope depth in the interpreter:
         interpreter.resolve(expr, scopes.size() - 1 - i);
+
+        // marking the variable as used:
+        scopes.get(i).get(name.lexeme).used = true;
         return;
       }
     }
   }
-
+//-----------------------------------------------------
   /// mimicking the start (opening) of a new scope inside the current one (the previous stack entry).
   private void beginScope() {
-    scopes.push(new HashMap<String, VariableStatus>());
+    scopes.push(new HashMap<String, VariableState>());
   }
 
-  /// mimicking the end (closing) of the current scope.
+  /// mimicking the end (closing) of the current scope + checking and reporting
+  /// whether any unused variables were declared, and making a Warning for that case.
   private void endScope() {
-    Map<String, VariableStatus> popped_scope = scopes.pop();
-    for (Map.Entry<String, VariableStatus> entry : popped_scope.entrySet()) {
-      if (entry.getValue().used == Boolean.FALSE) {
-
+    Map<String, VariableState> popped_scope = scopes.pop();
+    for (Map.Entry<String, VariableState> entry : popped_scope.entrySet()) {
+      VariableState state = entry.getValue();
+      if (!state.used) {
+        Lox.warning(state.token, "Local variable '" + entry.getKey() + "' is never used.");
       }
     }
   }
-
+//-----------------------------------------------------
   /// tracks the sequence of declaration in the current-(innermost)-scope
   /// and reports whether the variable has been instantiated, using a flag.
   private void declare(Token name) {
     if (scopes.isEmpty()) return;
 
-    Map<String, VariableStatus> scope = scopes.peek();
+    Map<String, VariableState> scope = scopes.peek();
 
     // Lox disallows 'variable-shadowing' within the same scope:
     if (scope.containsKey(name.lexeme)) {
@@ -98,16 +118,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // var a = 2; <- this is considered wrong Lox-syntax.
     }
 
-    scope.put(name.lexeme, new VariableStatus(false, false));
+    scope.put(name.lexeme, new VariableState(name, false));
   }
 
   /// updating the flag to 'true', to mimic a properly declared
   /// variable-statement, after the initializer has been fully-resolved.
   private void define(Token name) {
     if (scopes.isEmpty()) return;
-    scopes.peek().put(name.lexeme, new VariableStatus(true, false));
+    scopes.peek().put(name.lexeme, new VariableState(name, true));
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
     beginScope();
@@ -115,7 +135,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     endScope();
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
     resolve(stmt.expression);
@@ -127,21 +147,29 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     declare(stmt.name);
     define(stmt.name);
 
-    resolveFunction(stmt, FunctionType.FUNCTION);
+    resolveFunction(stmt.params, stmt.body, FunctionType.FUNCTION);
     return null;
   }
 
-  private void resolveFunction(Stmt.Function function, FunctionType type) {
+  @Override
+  public Void visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
+    // not declaring or defining a name for a lambda-function.
+
+    resolveFunction(expr.params, expr.body, FunctionType.FUNCTION);
+    return null;
+  }
+
+  private void resolveFunction(List<Token> params, List<Stmt> body, FunctionType type) {
     FunctionType enclosingFunction = currentFunction; // ~FOR-FUTURE-USE~
     currentFunction = type; // ~FOR-FUTURE-USE~
 
     beginScope();
 
-    for (Token param : function.params) {
+    for (Token param : params) {
       declare(param);
       define(param);
     }
-    resolve(function.body);
+    resolve(body);
 
     endScope();
 
@@ -155,13 +183,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     if (stmt.elseBranch != null) resolve(stmt.elseBranch);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitPrintStmt(Stmt.Print stmt) {
     resolve(stmt.expression);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitReturnStmt(Stmt.Return stmt) {
     if (currentFunction == FunctionType.NONE) {
@@ -174,7 +202,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitVarStmt(Stmt.Var stmt) {
     declare(stmt.name);
@@ -184,7 +212,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     define(stmt.name);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitWhileStmt(Stmt.While stmt) {
     resolve(stmt.condition);
@@ -200,35 +228,35 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     resolve(stmt.body);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitLoopFlowCtrlStmt(Stmt.LoopFlowCtrl stmt) { // =>
     // have already implemented the loop-depth checks in the parser, =>
     // before implementing the 'Resolver', so no use rechecking it here.
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitExitStmt(Stmt.Exit stmt) { // =>
     // the exit statement has no rules or semantics - wherever it is =>
     // thrown, the program immediately stop running.
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitAssignExpr(Expr.Assign expr) {
     resolve(expr.value);
     resolveLocal(expr, expr.name);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitBinaryExpr(Expr.Binary expr) {
     resolve(expr.left);
     resolve(expr.right);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitCallExpr(Expr.Call expr) {
     resolve(expr.callee);
@@ -239,7 +267,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitTernaryExpr(Expr.Ternary expr) { //NOTE: is this all?:
     resolve(expr.left);
@@ -247,37 +275,42 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     resolve(expr.right);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitGroupingExpr(Expr.Grouping expr) {
     resolve(expr.expression);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitLiteralExpr(Expr.Literal expr) {
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitLogicalExpr(Expr.Logical expr) {
     resolve(expr.left);
     resolve(expr.right);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitPrefixUnaryExpr(Expr.PrefixUnary expr) {
     resolve(expr.right);
     return null;
   }
-
+//-----------------------------------------------------
   @Override
   public Void visitVariableExpr(Expr.Variable expr) {
+    Token token = expr.name;
+
     // Lox disallows 'variable-self-referencing':
-    if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme).defined == Boolean.FALSE) {
-      Lox.error(expr.name,
-          "Can't read local variable in its own initializer.");
+    if (!scopes.isEmpty()) {
+      VariableState state = scopes.peek().get(token.lexeme);
+      if (state != null && !state.defined) {
+        Lox.error(token, "Can't read local variable in its own initializer.");
+      }
+    }
     // bad examples:
     // 1. var a = a; <- even if 'a' could be allowed to redeclare itself =>
     // again within that same scope, and it would have been declared =>
@@ -287,26 +320,18 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // 2. var a = {var b = a;}; <- this type of chained assignment does =>
     // not cause self-referencing, but rather the pure use of a variable =>
     // before it has been fully initialized.
-    }
 
-    resolveLocal(expr, expr.name);
-    scopes.peek().put(expr.name.lexeme, new VariableStatus(scopes.peek().get(expr.name.lexeme).defined, false));
+    resolveLocal(expr, token);
 
     return null;
   }
-
+//-----------------------------------------------------
   @Override
-  public Void visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
-    declare(expr.);
-    define(stmt.name);
-
-    resolveFunction(stmt, FunctionType.FUNCTION);
-    return null;
-  }
-
-  @Override
-  public Void visitErrorExpr(Expr.Error expr) { //NOTE: I have yet to =>
-    // use this AST-node for something useful. is this the time?
+  public Void visitErrorExpr(Expr.Error expr) { // =>
+    // in case the parser has created an Error-node, no additional work =>
+    // is expected from the Resolver or the Interpreter, cause Lox.java =>
+    // will stop the program from resolving/interpreting the source-code.
     return null;
   }
 }
+//-----------------------------------------------------

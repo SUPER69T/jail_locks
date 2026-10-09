@@ -7,14 +7,18 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Queue;
 
 public class Lox {
     protected static Interpreter interpreter;
+    final static int interpreter_strictness = 0; // 0 being the least strict.
 
     static boolean hadError = false;
     static boolean hadRuntimeError = false;
+
     static boolean hadWarning = false;
     static boolean hadRuntimeWarning = false;
+    static Queue<String> warningsQueue = new java.util.LinkedList<>();
 
   public static void main(String[] args) throws IOException {
     if (args.length > 1) {
@@ -35,8 +39,8 @@ public class Lox {
     run(new String(bytes, Charset.defaultCharset()));
 
     // Indicate an error in the exit code.
-    if (hadError) System.exit(65);
-    if (hadRuntimeError) System.exit(70);
+    if (hadError | hadWarning) System.exit(65);
+    if (hadRuntimeError | hadRuntimeWarning) System.exit(70);
   }
 
    private static void runPrompt() throws IOException {
@@ -51,45 +55,79 @@ public class Lox {
       if (line == null) break;
       run(line);
       hadError = false;
+
+      while (!warningsQueue.isEmpty()) {
+          System.err.println(warningsQueue.poll());
+      }
+      hadWarning = false;
     }
   }
 
   private static void run(String source) {
-    Scanner scanner = new Scanner(source);
-    List<Token> tokens = scanner.scanTokens();
 
-    Parser parser = new Parser(tokens);
-    List<Stmt> statements = parser.parse();
+//-----------------------------------------------|
+    Scanner scanner = new Scanner(source); //----|
+    List<Token> tokens = scanner.scanTokens(); //|
+//-----------------------------------------------|
+
+//--------------------------------------------|
+    Parser parser = new Parser(tokens); //----|
+    List<Stmt> statements = parser.parse(); //|
+//--------------------------------------------|
 
     // Stop if there was a syntax error.
     if (hadError) return;
+    // stop if a syntax warning occurred:
+    if (hadWarning) {
+      if (0 < interpreter_strictness) return;
+      else hadWarning = false;
+    }
 
-    Resolver resolver = new Resolver(interpreter);
-    resolver.resolve(statements);
+//---------------------------------------------------|
+    Resolver resolver = new Resolver(interpreter); //|
+    resolver.resolve(statements); //-----------------|
+//---------------------------------------------------|
 
     // Stop if there was a resolution error.
     if (hadError) return;
+    // stop if a resolution warning occurred:
+    if (hadWarning) {
+      if (0 < interpreter_strictness) return;
+      else hadWarning = false;
+    }
 
+// NOTE: run-time starts here..:
+//---------------------------------------|
+    interpreter.interpret(statements); //|
+//---------------------------------------|
 
-    // NOTE: run-time starts here..:
-    interpreter.interpret(statements);
+    // stop if a runtime warning occurred:
+    if (hadRuntimeWarning) {
+      if (0 < interpreter_strictness) return;
+      else hadWarning = false;
+    }
   }
 
+//-----------------------------------------------------
+// (Error/Warning)s HANDLING HELPERS:
+//-----------------------------------------------------
+// Errors:
+//-----------------------------------------------------
   static void error(int line, String message) {
-    report(line, "", message);
-  }
-
-  private static void report(int line, String where, String message) {
-    System.err.println("[line " + line + "] Error" + where + ": " + message + ".");
-    hadError = true;
+    reportError(line, "", message);
   }
 
   static void error(Token token, String message) {
     if (token.type == TokenType.EOF) {
-      report(token.line, " at end", message);
+      reportError(token.line, " at end", message);
     } else {
-      report(token.line, " at '" + token.lexeme + "'", message);
+      reportError(token.line, " at '" + token.lexeme + "'", message);
     }
+  }
+
+  private static void reportError(int line, String where, String message) {
+    System.err.println("[line " + line + "] Error" + where + ": " + message + ".");
+    hadError = true;
   }
 
   static void runtimeError(RuntimeError error) {
@@ -97,8 +135,20 @@ public class Lox {
         "\n[line " + error.token.line + "]");
     hadRuntimeError = true;
   }
+//-----------------------------------------------------
+// Warnings:
+//-----------------------------------------------------
 
-  static void warning(int line, String message) {
-    System.err.println("[line " + line + "] Error" + where + ": " + message + ".");
+  /// reporting compile-time warnings:
+  static void warning(Token token, String message) {
+    warningsQueue.offer("[line " + token.line + "] Warning: " + message + ".");
+    hadWarning = true;
   }
+
+  /// reporting runtime warnings:
+  static void runtimeWarning(Token token, String message) {
+    warningsQueue.offer("[line " + token.line + "] Warning: " + message + ".");
+    hadRuntimeWarning = true;
+  }
+//-----------------------------------------------------
 }

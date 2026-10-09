@@ -457,8 +457,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
   }
 
-  // implementing dummy visitError methods that will never be called cause the parser =>
-  // signals an errors that prevent the AST from being evaluated by the Interpreter:
+  // implementing a dummy visitError method that will never be called cause the parser =>
+  // signals an errors that prevents the AST from being evaluated by the Interpreter:
   public Object visitErrorExpr(Expr.Error err_expr) {return null;}
     
   //
