@@ -9,13 +9,14 @@ import static jail_locks.TokenType.LAMBDA_FUN;
 
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   // defining the global-scope on interpreter's initialization:
-  final Environment globals = new Environment();
+  final Environment.GlobalEnvironment globals = new Environment.GlobalEnvironment();
   private Environment environment = globals;
   //
 
   // encoding the 'upward-depth' of each variable usage compared to it's =>
   // declared location within the scopes-hierarchy:
-  private final Map<Expr, Integer> locals = new HashMap<>();
+  record locationInEnvironment(Integer depth, Integer index) {}
+  private final Map<Expr, locationInEnvironment> locals = new HashMap<>();
   //
 
   private final boolean isRepl;
@@ -72,8 +73,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   /// a method for saving the variable 'depth'-distance between a =>
   /// variable's usage to it's declaration in the scope-environments- =>
   /// -hierarchy. the 'depth' calculation is done by the 'Resolver'.
-  void resolve(Expr expr, int depth) {
-    locals.put(expr, depth);
+  void resolve(Expr expr, Integer depth, Integer index) {
+    locals.put(expr, new locationInEnvironment(depth, index));
   }
 //-----------------------------------------------------
   /// in REPL mode: evaluates the statement-expression and prints it to =>
@@ -133,7 +134,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       value = evaluate(stmt.initializer);
     }
     else {
-      value = Environment.UNINITIALIZED;
+      value = Environment.GlobalEnvironment.UNINITIALIZED;
     }
 
     environment.define(stmt.name.lexeme, value);
@@ -184,7 +185,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
     if (stmt.CreateNestedEnv) {
-      executeBlock(stmt.statements, new Environment(environment));
+      executeBlock(stmt.statements, new Environment.LocalEnvironment(environment));
     }
     else {
       executeStmtList(stmt.statements);
@@ -212,10 +213,13 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Object visitAssignExpr(Expr.Assign expr) {
     Object value = evaluate(expr.value);
-    // OLD: environment.assign(expr.name, value);
-    Integer distance = locals.get(expr);
-    if (distance != null) {
-      environment.assignAt(distance, expr.name, value);
+
+    locationInEnvironment location = locals.get(expr);
+    Integer depth = location.depth;
+    Integer index = location.index;
+
+    if (depth != null) {
+      ((Environment.LocalEnvironment) environment).assignAt(depth, index, value);
     } else {
       globals.assign(expr.name, value);
     }
@@ -225,14 +229,16 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   /// fetches a variable's value from the environments-hierarchy:
   @Override
   public Object visitVariableExpr(Expr.Variable expr) {
-    // OLD: return environment.get(expr.name);
     return lookUpVariable(expr.name, expr);
   }
 
   private Object lookUpVariable(Token name, Expr expr) {
-    Integer distance = locals.get(expr);
-    if (distance != null) {
-      return environment.getAt(distance, name.lexeme);
+    locationInEnvironment location = locals.get(expr);
+    Integer depth = location.depth;
+    Integer index = location.index;
+
+    if (depth != null) {
+      return ((Environment.LocalEnvironment) environment).getAt(depth, index);
     } else { // Lox allows for the use of 'late-binding' for global- =>
       // -variables, which is why the Resolver doesn't bother checking =>
       // the global scope if a variable isn't found in the scopes-stack.

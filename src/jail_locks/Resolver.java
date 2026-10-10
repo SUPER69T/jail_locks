@@ -29,11 +29,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   /// variable has been initialized and used at stages in the scope's life.
   private static class VariableState {
     final Token token;
+    final Integer index;
     boolean defined;
     boolean used;
 
-    VariableState(Token token, boolean defined) {
+    VariableState(Token token, Integer index, boolean defined) {
         this.token = token;
+        this.index = index;
         this.defined = defined;
         this.used = false;
     }
@@ -72,14 +74,18 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   /// called/used, to the place where they were declared, and saving that
   /// distance in the interpreter class, for it to fetch/assign without the
   /// need to recalculate that distance or recursively look it up at runtime.
+  /// NOTE: the 'index' is calculated once at variable-declaration inside
   private void resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
-      if (scopes.get(i).containsKey(name.lexeme)) {
-        // saving the scope depth in the interpreter:
-        interpreter.resolve(expr, scopes.size() - 1 - i);
+      Map<String, VariableState> scope = scopes.get(i);
+      VariableState state = scope.get(name.lexeme);
+
+      if (state != null) {
+        // saving the scope depth and the pre-declared index for the interpreter:
+        interpreter.resolve(expr, scopes.size() - 1 - i, state.index);
 
         // marking the variable as used:
-        scopes.get(i).get(name.lexeme).used = true;
+        state.used = true;
         return;
       }
     }
@@ -97,7 +103,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     for (Map.Entry<String, VariableState> entry : popped_scope.entrySet()) {
       VariableState state = entry.getValue();
       if (!state.used) {
-        Lox.warning(state.token, "Local variable '" + entry.getKey() + "' is never used.");
+        Lox.warning(state.token, "Local variable '" + entry.getKey() + "' is never used");
       }
     }
   }
@@ -118,14 +124,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // var a = 2; <- this is considered wrong Lox-syntax.
     }
 
-    scope.put(name.lexeme, new VariableState(name, false));
+    scope.put(name.lexeme, new VariableState(name, scope.size(), false));
+    //                                             |           |
+    // this index should start at 0, which also matches the number of elements in an empty scope.
   }
 
   /// updating the flag to 'true', to mimic a properly declared
   /// variable-statement, after the initializer has been fully-resolved.
   private void define(Token name) {
     if (scopes.isEmpty()) return;
-    scopes.peek().put(name.lexeme, new VariableState(name, true));
+    scopes.peek().get(name.lexeme).defined = true;
   }
 //-----------------------------------------------------
   @Override

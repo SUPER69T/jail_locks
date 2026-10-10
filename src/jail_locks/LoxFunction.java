@@ -4,7 +4,10 @@ import java.util.List;
 
 class LoxFunction implements LoxCallable {
   private final Stmt.Function declaration;
-  private final Environment closure;
+  private final Environment closure; // =>
+  // the 'Resolver' did resolve every single one of a function's =>
+  // parameters and arguments, which allows us to create a =>
+  // LocalEnvironment and access variables in the fully-indexed way.
 
 
   // constructor:
@@ -20,7 +23,7 @@ class LoxFunction implements LoxCallable {
 
   @Override
   public Object call(Interpreter interpreter, List<Object> arguments) { // used with 'visitCallExpr()'.
-    Environment environment = new Environment(closure); // using the closure's environment scope.
+    Environment environment = new Environment.LocalEnvironment(closure); // using the closure's environment scope.
 
     for (int i = 0; i < declaration.params.size(); i++) {
       environment.define(declaration.params.get(i).lexeme, arguments.get(i)); // =>

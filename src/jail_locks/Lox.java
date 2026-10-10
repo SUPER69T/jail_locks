@@ -38,6 +38,10 @@ public class Lox {
 
     run(new String(bytes, Charset.defaultCharset()));
 
+    while (!warningsQueue.isEmpty()) {
+      System.err.println(warningsQueue.poll());
+    }
+
     // Indicate an error in the exit code.
     if (hadError | hadWarning) System.exit(65);
     if (hadRuntimeError | hadRuntimeWarning) System.exit(70);
@@ -131,8 +135,9 @@ public class Lox {
   }
 
   static void runtimeError(RuntimeError error) {
-    System.err.println(error.getMessage() +
-        "\n[line " + error.token.line + "]");
+    System.err.println("[line " + error.token.line + "] " +
+            error.getMessage());
+
     hadRuntimeError = true;
   }
 //-----------------------------------------------------
