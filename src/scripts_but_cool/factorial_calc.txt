@@ -6,3 +6,4 @@ for (var i = 1, a = 1; i <= n;) { // now allows multivariable declarations!
 }
 
 // print"calculating the factorial:";var n=5;for(var i=1,a=1;i<=n;){a=a*(i++);if(i==n)print"the answer is: "+a+".";}
+

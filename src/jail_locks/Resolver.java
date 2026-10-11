@@ -119,7 +119,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // Lox disallows 'variable-shadowing' within the same scope:
     if (scope.containsKey(name.lexeme)) {
       Lox.error(name,
-          "Already a variable with this name in this scope.");
+          "Already a variable with this name in this scope");
     // bad example:
     // var a = 1;
     // var a = 2; <- this is considered wrong Lox-syntax.
@@ -204,7 +204,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   @Override
   public Void visitReturnStmt(Stmt.Return stmt) {
     if (currentFunction == FunctionType.NONE) {
-      Lox.error(stmt.keyword, "Can't return from top-level code.");
+      Lox.error(stmt.keyword, "Can't return from top-level code");
     }
 
     if (stmt.value != null) {
@@ -319,7 +319,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     if (!scopes.isEmpty()) {
       VariableState state = scopes.peek().get(token.lexeme);
       if (state != null && !state.defined) {
-        Lox.error(token, "Can't read local variable in its own initializer.");
+        Lox.error(token, "detected a cyclic-referencing variable");
       }
     }
     // bad examples:

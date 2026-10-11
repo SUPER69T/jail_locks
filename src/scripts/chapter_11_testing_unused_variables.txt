@@ -1,4 +1,7 @@
 var a = 5;
 {
+a = 6;
 var b = a;
+var a = a;
 }
+var a = 4;
