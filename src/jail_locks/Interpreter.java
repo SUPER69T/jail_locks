@@ -13,8 +13,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   private Environment environment = globals;
   //
 
-  // encoding the 'upward-depth' of each variable usage compared to it's =>
-  // declared location within the scopes-hierarchy:
+  // encoding the 'upward-depth', and the index (variable-enumeration =>
+  // as declared in the current scope) within the scopes-hierarchy, for =>
+  // each variable, saving it as a pair in a record, and as the value =>
+  // in the 'locals' map that represents each variable in the scope.
+  // NOTE:
+  //  'depth' and 'index' are only ever assigned real values, and can =>
+  //  never be null, which is why checking for the nullity of the =>
+  //  entire record is as safe as checking each of the entries.
   record locationInEnvironment(Integer depth, Integer index) {}
   private final Map<Expr, locationInEnvironment> locals = new HashMap<>();
   //
@@ -215,14 +221,16 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Object value = evaluate(expr.value);
 
     locationInEnvironment location = locals.get(expr);
-    Integer depth = location.depth;
-    Integer index = location.index;
+    if (location != null) {
+      Integer depth = location.depth;
+      Integer index = location.index;
 
-    if (depth != null) {
       ((Environment.LocalEnvironment) environment).assignAt(depth, index, value);
+
     } else {
       globals.assign(expr.name, value);
     }
+
     return value;
   }
 //-----------------------------------------------------
@@ -234,20 +242,20 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
   private Object lookUpVariable(Token name, Expr expr) {
     locationInEnvironment location = locals.get(expr);
-    Integer depth = location.depth;
-    Integer index = location.index;
+    if (location != null) {
+      Integer depth = location.depth;
+      Integer index = location.index;
 
-    if (depth != null) {
       return ((Environment.LocalEnvironment) environment).getAt(depth, index);
-    } else { // Lox allows for the use of 'late-binding' for global- =>
-      // -variables, which is why the Resolver doesn't bother checking =>
-      // the global scope if a variable isn't found in the scopes-stack.
-
-      return globals.get(name); // =>
-      // a variable that hasn't been declared at all will fall through =>
-      // into the 'Environment's .get() methods, which will throw the =>
-      // corresponding "Undefined variable..." RuntimeError.
     }
+    // ELSE:
+    // Lox allows for the use of 'late-binding' for global- =>
+    // -variables, which is why the Resolver doesn't bother checking =>
+    // the global scope if a variable isn't found in the scopes-stack.
+    return globals.get(name); // =>
+    // a variable that hasn't been declared at all will fall through =>
+    // into the 'Environment's .get() methods, which will throw the =>
+    // corresponding "Undefined variable..." RuntimeError.
   }
 //-----------------------------------------------------
   @Override

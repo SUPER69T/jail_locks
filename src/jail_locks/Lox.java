@@ -10,7 +10,12 @@ import java.util.List;
 import java.util.Queue;
 
 public class Lox {
+    // defining a single 'Interpreter' for the program's entire run- =>
+    // -duration so that environmental variables get shared between =>
+    // different REPL input-entries:
+    //---
     protected static Interpreter interpreter;
+    //---
     final static int interpreter_strictness = 0; // 0 being the least strict.
 
     static boolean hadError = false;
@@ -68,6 +73,12 @@ public class Lox {
   }
 
   private static void run(String source) {
+  // NOTE: for debugging:
+  /*
+  System.out.println("--- SOURCE CODE ---:");
+  System.out.println(source);
+  System.out.println("------------------------------------");
+  */
 
 //-----------------------------------------------|
     Scanner scanner = new Scanner(source); //----|
@@ -143,7 +154,6 @@ public class Lox {
 //-----------------------------------------------------
 // Warnings:
 //-----------------------------------------------------
-
   /// reporting compile-time warnings:
   static void warning(Token token, String message) {
     warningsQueue.offer("[line " + token.line + "] Warning: " + message + ".");

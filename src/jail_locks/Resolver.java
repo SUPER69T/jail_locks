@@ -111,7 +111,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   /// tracks the sequence of declaration in the current-(innermost)-scope
   /// and reports whether the variable has been instantiated, using a flag.
   private void declare(Token name) {
-    if (scopes.isEmpty()) return;
+    if (scopes.isEmpty()) return; // <- if the scopes-stack is empty =>
+    // that means we are declaring in the global-scope.
 
     Map<String, VariableState> scope = scopes.peek();
 
@@ -138,9 +139,11 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
-    beginScope();
-    resolve(stmt.statements);
-    endScope();
+    if (stmt.CreateNestedEnv) {
+      beginScope();
+      resolve(stmt.statements);
+      endScope();
+    } else {resolve(stmt.statements);}
     return null;
   }
 //-----------------------------------------------------
@@ -277,7 +280,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 //-----------------------------------------------------
   @Override
-  public Void visitTernaryExpr(Expr.Ternary expr) { //NOTE: is this all?:
+  public Void visitTernaryExpr(Expr.Ternary expr) {
     resolve(expr.left);
     resolve(expr.middle);
     resolve(expr.right);
