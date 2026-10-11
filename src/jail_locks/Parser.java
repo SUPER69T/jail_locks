@@ -246,7 +246,7 @@ class Parser {
     return new FunctionParamsBodyPAIR(parameters, body);
   }
 
-// NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
+//  NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
 //  private Stmt.Function function(String kind) { // kind is ("function"/"method")
 //    Token name = consume(IDENTIFIER, "Expect " + kind + " name");
 //    Token parameter;

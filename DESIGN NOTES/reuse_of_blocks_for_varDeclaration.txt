@@ -1,0 +1,34 @@
+back when I was implementing robert's stmt.Block scopes and additional
+Lox-statements, like variable-declaration, I wanted to support Lox with
+multi-variable declaration syntax, so that numerous variables could be
+declared on the same line of Lox-code, and parsed as a sequence of -
+declaration-statements.
+now, instead of doing it the experienced way and KISS (keeping it simple -
+silly), I decided to reuse the Block-visitor-method in the Interpreter,
+(which already had execution of numerous statements), by splitting its
+functionality into 2 methods - one that executes a sequence of statements,
+and one which chooses (based on a predefined boolean flag within the AST-
+-node, declared by the Parser himself) whether to create a new environment -
+bound to that new scope declaration, or not, and simply execute the sequence.
+
+that was all fun and games and I totally forgot about this implementation
+and remember that I was thinking to myself how this complication of the
+original Lox code is actually the better and cleaner way of reusing such
+functionality without extra boilerplate code in the interpreter...
+and here comes the new class called the Resolver, which I didn't know about
+back when I was implementing this "contract" for the stmt.Block node, which
+now forces all visitor implementors to check that boolean flag, and work-
+-around the now-2 different possibilities of executing this node, and of
+course I forgot about this overcomplication by the time I was reimplementing
+a new Block-visitor method, now in the Resolver, and left it to virtualize
+the creation of a new scoped-environment, on every single call to this Block
+AST-node, no matter if the Parser's varDeclaration()-method was the one to
+wrap this Block-node around the Stmt.Var, and passed the correct boolean.
+
+all of that caused a desync between the Resolver declares variables in
+scopes, and the way the Interpreter is expecting them to be saved in its
+locals-map of variable lookup locations in the local/global environments.
+
+so moral of the story is to stick to KISS, and be careful in commiting to
+long distance contracts before knowing or thinking about the full project
+architecture as a whole.
