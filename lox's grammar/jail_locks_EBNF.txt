@@ -1,16 +1,19 @@
 program        → declaration* EOF ;
------------------------------------------------------------------------
-declaration    → funDecl
+---------------------------------------------------------------------------
+declaration    → classDecl
+               | funDecl
                | varDecl
                | statement ;
------------------------------------------------------------------------
+---------------------------------------------------------------------------
+classDecl      → "class" IDENTIFIER "{" function* "}" ;
+---------------------------------------------------------------------------
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
------------------------------------------------------------------------
+---------------------------------------------------------------------------
                                                      | multivariable (COMMA-separated) varDecs |
 varDecl        → "var" IDENTIFIER ( "=" expression )? ("," IDENTIFIER ( "=" expression )?)* ";" ;
------------------------------------------------------------------------
+---------------------------------------------------------------------------
 statement      → exprStmt
                | forStmt
                | ifStmt
@@ -21,7 +24,7 @@ statement      → exprStmt
                | exit
                | breakStmt
                | continueStmt ;
------------------------------------------------------------------------
+---------------------------------------------------------------------------
 exprStmt       → expression ";" ;
 forStmt        → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
 ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
@@ -32,7 +35,7 @@ block          → "{" declaration* "}" ;
 exit           → "exit" ;
 breakStmt      → "break" ";" ;
 continueStmt   → "continue" ";" ;
------------------------------------------------------------------------
+---------------------------------------------------------------------------
 expression     → comma ;
 comma          → assignment ( "," assignment )*;
 assignment     → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=") assignment
@@ -48,12 +51,12 @@ factor         → exponent ( ( "/" | "*" | "%") exponent )* ;
 exponent       → prefix_unary ( "^" ) exponent | prefix_unary;
 prefix_unary   → ( "!" | "-" ) prefix_unary
                | postfix_unary ;
-postfix_unary  → call  ("++" | "--")
-call           → lambdaFunction ( "(" arguments? ")" )* ;     ] these 2
-arguments      → expression ( "," expression )* ;      ] come 2gether
-lambdaFunction → ("fun" "(" parameters? ")" block) | primary ;
+postfix_unary  → call  ("++" | "--")                                    ___
+call           → lambdaFunction ( "(" arguments? ")" | "." IDENTIFIER )* ; ] these 2
+arguments      → expression ( "," expression )* ;                          ] come 2gether
+lambdaFunction → ("fun" "(" parameters? ")" block) | primary ;          ---
 primary        → "true" | "false" | "nil"
                | NUMBER | STRING
                | "(" expression ")"
                | IDENTIFIER ;
------------------------------------------------------------------------
+---------------------------------------------------------------------------

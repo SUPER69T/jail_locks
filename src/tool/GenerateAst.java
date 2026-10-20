@@ -20,6 +20,7 @@ public class GenerateAst {
       "Binary         : Expr left, Token operator, Expr right",
       "Call           : Expr callee, Token paren, List<Expr> arguments", // arguments can both be Identifiers, =>
       // and any other expression that can be evaluated to a value in run-time.
+      "Get            : Expr object, Token name",
       "Ternary        : Expr left, Token question, Expr middle, Token colon, Expr right",
       "Grouping       : Expr expression",
       "Literal        : Object value",
@@ -33,6 +34,7 @@ public class GenerateAst {
     // generating the 'Stmt' abstract class:
     defineAst(outputDir, "Stmt", Arrays.asList(
       "Block        : List<Stmt> statements, Boolean CreateNestedEnv",
+      "Class        : Token name, List<Stmt.Function> methods",
       "Expression   : Expr expression",
       "Function     : Token name, List<Token> params, List<Stmt> body", // params is a list of Identifiers.
       "If           : Expr condition, Stmt thenBranch, Stmt elseBranch",

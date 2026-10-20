@@ -41,6 +41,7 @@ class Parser {
 //-----------------------------------------------------
   private Stmt declaration() {
     try {
+      if (match(CLASS)) return classDeclaration();
       if (check(FUN) && checkNext(IDENTIFIER)){
         advance();
         return function("function");
@@ -51,6 +52,134 @@ class Parser {
       synchronize();
       return null;
     }
+  }
+//-----------------------------------------------------
+  private Stmt classDeclaration() {
+    Token name = consume(IDENTIFIER, "Expect class name");
+    consume(LEFT_BRACE, "Expect '{' before class body");
+
+    List<Stmt.Function> methods = new ArrayList<>();
+    while (!check(RIGHT_BRACE) && !isAtEnd()) {
+      methods.add(function("method"));
+    }
+
+    consume(RIGHT_BRACE, "Expect '}' after class body");
+
+    return new Stmt.Class(name, methods);
+  }
+//-----------------------------------------------------
+  private Stmt.Function function(String kind) {
+    Token name = consume(IDENTIFIER, "Expect " + kind + " name");
+    FunctionParamsBodyPAIR paramsANDbodyPAIR = finishFunction(kind);
+    return new Stmt.Function(name, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body);
+  }
+  /// this one helper is used by both function() and lambdaFunction() production-rules.
+  private FunctionParamsBodyPAIR finishFunction(String kind) {
+        consume(LEFT_PAREN, "Expect '(' after " + kind + " name");
+    List<Token> parameters = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (parameters.size() >= 255) {
+          error(peek(), "Can't have more than 255 parameters");
+        }
+
+        parameters.add(
+            consume(IDENTIFIER, "Expect parameter name"));
+      } while (match(COMMA));
+    }
+    consume(RIGHT_PAREN, "Expect ')' after parameters");
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    List<Stmt> body = block();
+    return new FunctionParamsBodyPAIR(parameters, body);
+  }
+
+//  NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
+//  private Stmt.Function function(String kind) { // kind is ("function"/"method")
+//    Token name = consume(IDENTIFIER, "Expect " + kind + " name");
+//    Token parameter;
+//    Token rvalue_tkn;
+//    boolean defaults = false;
+//
+//    consume(LEFT_PAREN, "Expect '(' after " + kind + " name");
+//    List<Token> parameters = new ArrayList<>();
+//    if (!check(RIGHT_PAREN)) { // if 'false', the function was declared with 0 parameters.
+//      // else:
+//      do { // example: fun dosomtng(A, B = 5);
+//        if (parameters.size() >= 255) {
+//          error(peek(), "Can't have more than 255 parameters");
+//        } // A,B|
+//        parameter = consume(IDENTIFIER, "Expect parameter name");
+//
+//        if (peek().type == EQUAL) { // =>
+//        // detected the start of the default parameters
+//          defaults = true;
+//          break;
+//        }
+//        parameters.add(parameter); // parameters = [IDENTIFIER(A)]
+//
+//      } while (match(COMMA));
+//    }
+//
+//    if (defaults) {
+//      // assigning default parameters:
+//      //---
+//      current--; // unwinding back to the 'IDENTIFIER' right before the first '='.
+//      do {
+//        if (parameters.size() >= 255) {
+//          error(peek(), "Can't have more than 255 parameters");
+//        } // B  |
+//        parameter = consume(IDENTIFIER, "Expect parameter name");
+//
+//        if (match(EQUAL)) {
+//          if (match(NUMBER, STRING)) {
+//            rvalue_tkn = previous(); //  |       B       |  |        5       |  |      1      |
+//            parameter = new Token(EQUAL, parameter.lexeme, rvalue_tkn.literal, rvalue_tkn.line);
+//          }
+//          error(parameter, "default parameters can only be assigned rvalues of types: 'NUMBER' / 'STRING'.");
+//        }
+//        else error(peek(), "cannot declare positional arguments after defaults");
+//
+//        parameters.add(parameter); // parameters = [tkn(A),tkn(B,5)]
+//
+//      } while (match(COMMA));
+//      //---
+//    }
+//    consume(RIGHT_PAREN, "Expect ')' after parameters");
+//
+//    consume(LEFT_BRACE, "Expect '{' before " + kind + " body");
+//
+//    List<Stmt> body = block();
+//    return new Stmt.Function(name, parameters, body);
+//  }
+//-----------------------------------------------------
+  /**
+  * @RETURNS: a node representing the declaration-statement
+  * of a new variable in the current environment.
+  */
+  private Stmt varDeclaration() {
+
+    Token name;
+    Expr initializer;
+    List<Stmt> varDecs = new ArrayList<>();
+
+    // I was just thinking about how I shit on do-while loops all the time =>
+    // cause of how little use I ever got out of them and how I should def =>
+    // not implement it in Lox, and now I stumbled on the most perfect use =>
+    // case for a do-while loop I think I have ever seen in my life. ggs:
+    //---
+    do {
+      name = consume(IDENTIFIER, "Expect variable name");
+      initializer = null;
+      if (match(EQUAL)) {
+      initializer = assignment();
+      }
+      varDecs.add(new Stmt.Var(name, initializer));
+    } while (match(COMMA));
+    //---
+
+    consume(SEMICOLON, "Expect ';' after variable declaration");
+    return new Stmt.Block(varDecs, false);
   }
 //-----------------------------------------------------
   private Stmt statement() {
@@ -163,35 +292,6 @@ class Parser {
     return new Stmt.Return(keyword, value);
   }
 //-----------------------------------------------------
-  /**
-  * @RETURNS: a node representing the declaration-statement
-  * of a new variable in the current environment.
-  */
-  private Stmt varDeclaration() {
-
-    Token name;
-    Expr initializer;
-    List<Stmt> varDecs = new ArrayList<>();
-
-    // I was just thinking about how I shit on do-while loops all the time =>
-    // cause of how little use I ever got out of them and how I should def =>
-    // not implement it in Lox, and now I stumbled on the most perfect use =>
-    // case for a do-while loop I think I have ever seen in my life. ggs:
-    //---
-    do {
-      name = consume(IDENTIFIER, "Expect variable name");
-      initializer = null;
-      if (match(EQUAL)) {
-      initializer = assignment();
-      }
-      varDecs.add(new Stmt.Var(name, initializer));
-    } while (match(COMMA));
-    //---
-
-    consume(SEMICOLON, "Expect ';' after variable declaration");
-    return new Stmt.Block(varDecs, false);
-  }
-//-----------------------------------------------------
   private Stmt whileStatement() {
     consume(LEFT_PAREN, "Expect '(' after 'while'");
     Expr condition = expression();
@@ -219,91 +319,6 @@ class Parser {
     consume(SEMICOLON, "Expect ';' after expression");
     return new Stmt.Expression(expr);
   }
-//-----------------------------------------------------
-  private Stmt.Function function(String kind) {
-    Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
-    FunctionParamsBodyPAIR paramsANDbodyPAIR = finishFunction(kind);
-    return new Stmt.Function(name, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body);
-  }
-  /// this one helper is used by both function() and lambdaFunction() production-rules.
-  private FunctionParamsBodyPAIR finishFunction(String kind) {
-        consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
-    List<Token> parameters = new ArrayList<>();
-    if (!check(RIGHT_PAREN)) {
-      do {
-        if (parameters.size() >= 255) {
-          error(peek(), "Can't have more than 255 parameters.");
-        }
-
-        parameters.add(
-            consume(IDENTIFIER, "Expect parameter name."));
-      } while (match(COMMA));
-    }
-    consume(RIGHT_PAREN, "Expect ')' after parameters.");
-
-    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
-    List<Stmt> body = block();
-    return new FunctionParamsBodyPAIR(parameters, body);
-  }
-
-//  NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
-//  private Stmt.Function function(String kind) { // kind is ("function"/"method")
-//    Token name = consume(IDENTIFIER, "Expect " + kind + " name");
-//    Token parameter;
-//    Token rvalue_tkn;
-//    boolean defaults = false;
-//
-//    consume(LEFT_PAREN, "Expect '(' after " + kind + " name");
-//    List<Token> parameters = new ArrayList<>();
-//    if (!check(RIGHT_PAREN)) { // if 'false', the function was declared with 0 parameters.
-//      // else:
-//      do { // example: fun dosomtng(A, B = 5);
-//        if (parameters.size() >= 255) {
-//          error(peek(), "Can't have more than 255 parameters");
-//        } // A,B|
-//        parameter = consume(IDENTIFIER, "Expect parameter name");
-//
-//        if (peek().type == EQUAL) { // =>
-//        // detected the start of the default parameters
-//          defaults = true;
-//          break;
-//        }
-//        parameters.add(parameter); // parameters = [IDENTIFIER(A)]
-//
-//      } while (match(COMMA));
-//    }
-//
-//    if (defaults) {
-//      // assigning default parameters:
-//      //---
-//      current--; // unwinding back to the 'IDENTIFIER' right before the first '='.
-//      do {
-//        if (parameters.size() >= 255) {
-//          error(peek(), "Can't have more than 255 parameters");
-//        } // B  |
-//        parameter = consume(IDENTIFIER, "Expect parameter name");
-//
-//        if (match(EQUAL)) {
-//          if (match(NUMBER, STRING)) {
-//            rvalue_tkn = previous(); //  |       B       |  |        5       |  |      1      |
-//            parameter = new Token(EQUAL, parameter.lexeme, rvalue_tkn.literal, rvalue_tkn.line);
-//          }
-//          error(parameter, "default parameters can only be assigned rvalues of types: 'NUMBER' / 'STRING'.");
-//        }
-//        else error(peek(), "cannot declare positional arguments after defaults");
-//
-//        parameters.add(parameter); // parameters = [tkn(A),tkn(B,5)]
-//
-//      } while (match(COMMA));
-//      //---
-//    }
-//    consume(RIGHT_PAREN, "Expect ')' after parameters");
-//
-//    consume(LEFT_BRACE, "Expect '{' before " + kind + " body");
-//
-//    List<Stmt> body = block();
-//    return new Stmt.Function(name, parameters, body);
-//  }
 //-----------------------------------------------------
   /**
    * @return a list of all declarations within the new "{'...'}" scope =>
@@ -515,6 +530,10 @@ class Parser {
     while (true) {
       if (match(LEFT_PAREN)) {
         expr = finishCall(expr);
+      } else if (match(DOT)) {
+        Token name = consume(IDENTIFIER,
+            "Expect property name after '.'");
+        expr = new Expr.Get(expr, name);
       } else {
         break;
       }

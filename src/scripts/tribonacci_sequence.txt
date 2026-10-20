@@ -1,0 +1,10 @@
+fun trib(n) {
+  if (n == 0) return 0;
+  if (n == 1 or n == 2) return 1;
+
+  return trib(n - 3) + trib(n - 2) + trib(n - 1);
+}
+
+for (var i = 0; i < 21; i = i + 1) {
+  print "trib_" + i + ": " + trib(i+1);
+}
