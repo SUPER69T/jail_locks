@@ -9,7 +9,11 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private final Interpreter interpreter;
   private final Stack<Map<String, VariableState>> scopes = new Stack<>();
-  private FunctionType currentFunction = FunctionType.NONE;
+
+  private FunctionType currentFunction = FunctionType.NONE; // =>
+  // 'currentFunction' is used for checking that we are inside a- =>
+  // function for a proper 'return'-expression, and also for checking =>
+  // that the initializer-method does not return any non-null values.
 
   // constructor:
   //---
@@ -21,9 +25,17 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private enum FunctionType {
     NONE,
     FUNCTION,
+    INITIALIZER,
     METHOD,
     LAMBDA
   }
+
+  private enum ClassType {
+    NONE,
+    CLASS
+  }
+
+  private ClassType currentClass = ClassType.NONE;
 
   /// this class is used within the 'scopes'-stack, to track whether a
   /// variable has been initialized and used at stages in the scope's life.
@@ -149,8 +161,35 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitClassStmt(Stmt.Class stmt) {
+    // keeping track of whether we are inside a class for-'this' resolving:
+    ClassType enclosingClass = currentClass;
+    currentClass = ClassType.CLASS;
+    //
     declare(stmt.name);
     define(stmt.name);
+
+    beginScope();
+    // WARNING: define as a proper 'VariableState':
+    // be mindful that 'this' should behave as variables shadowing themselves, but =>
+    // should not allow reassignment since they aren't an actual variable, but a =>
+    // pointer to the klass-instance.
+    scopes.peek().put("this", new VariableState(null, null, true));
+
+    // WARNING: is this correct?:
+    for (Stmt.Function method : stmt.methods) {
+      FunctionType declaration = FunctionType.METHOD;
+      if (method.name.lexeme.equals("init")) { // =>
+        // overriding 'declaration' if the method is an initializer:
+        declaration = FunctionType.INITIALIZER;
+      }
+      resolveFunction(method.params, method.body, declaration);
+    }
+
+    endScope();
+
+    // restoring inside-of-class state for the 'this'-checker:
+    currentClass = enclosingClass;
+
     return null;
   }
 //-----------------------------------------------------
@@ -178,9 +217,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   private void resolveFunction(List<Token> params, List<Stmt> body, FunctionType type) {
-    FunctionType enclosingFunction = currentFunction; // ~FOR-FUTURE-USE~
-    currentFunction = type; // ~FOR-FUTURE-USE~
-
+    FunctionType enclosingFunction = currentFunction;
+    currentFunction = type;
+    //
     beginScope();
 
     for (Token param : params) {
@@ -191,7 +230,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     endScope();
 
-    currentFunction = enclosingFunction; // ~FOR-FUTURE-USE~
+    currentFunction = enclosingFunction;
   }
 //-----------------------------------------------------
   @Override
@@ -210,11 +249,19 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitReturnStmt(Stmt.Return stmt) {
-    if (currentFunction == FunctionType.NONE) {
+    if (currentFunction == FunctionType.NONE) { // means that the =>
+      // 'Return'-expression was found outisde of a function.
       Lox.error(stmt.keyword, "Can't return from top-level code");
     }
 
     if (stmt.value != null) {
+      if (currentFunction == FunctionType.INITIALIZER) { // =>
+        // checking for the possibility of the initializer-function =>
+        // trying to return values other than the empty null in: "return;".
+        Lox.error(stmt.keyword,
+            "Can't return a value from an initializer");
+      }
+
       resolve(stmt.value);
     }
 
@@ -315,6 +362,27 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitLogicalExpr(Expr.Logical expr) {
     resolve(expr.left);
     resolve(expr.right);
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitSetExpr(Expr.Set expr) {
+    resolve(expr.value);
+    resolve(expr.object);
+    return null;
+  }
+//-----------------------------------------------------
+  @Override
+  public Void visitThisExpr(Expr.This expr) {
+    // 'this'-checker, whose job is to track whether the 'this'- =>
+    // expression was found inside a class, if not? - then report:
+    if (currentClass == ClassType.NONE) {
+      Lox.error(expr.keyword,
+          "Can't use 'this' outside of a class");
+      return null;
+    }
+
+    resolveLocal(expr, expr.keyword);
     return null;
   }
 //-----------------------------------------------------

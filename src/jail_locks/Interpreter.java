@@ -99,7 +99,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   public Void visitFunctionStmt(Stmt.Function stmt) {
     // conversion of the Stmt.Function to a full LoxFunction-object =>
     // that implements: constructor (dah), arity(), call(), toString():
-    LoxFunction function = new LoxFunction(stmt, environment);
+    LoxFunction function = new LoxFunction(stmt, environment, false);
 
     // saving that function object in the current environment:
     environment.define(stmt.name.lexeme, function); // 'name' is the IDENTIFIER
@@ -203,9 +203,21 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitClassStmt(Stmt.Class stmt) {
     environment.define(stmt.name.lexeme, null);
-    LoxClass klass = new LoxClass(stmt.name.lexeme);
-    // FIX:
-    //(Environment.GlobalEnvironment)environment.assign(stmt.name, klass);
+    Map<String, LoxFunction> methods = new HashMap<>();
+
+    for (Stmt.Function method : stmt.methods) {
+      LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init")); // =>
+      // here is where the 'init()'-method check is done for the =>
+      // 'isInitializer' flag in LoxFunction.
+
+      methods.put(method.name.lexeme, function);
+    }
+
+    LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
+
+    // WARNING: add assignment for both local and global scopes.
+    if (environment instanceof Environment.GlobalEnvironment)
+      ((Environment.GlobalEnvironment)environment).assign(stmt.name, klass);
     return null;
   }
 //-----------------------------------------------------
@@ -284,6 +296,25 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     return evaluate(expr.right);
+  }
+//-----------------------------------------------------
+  @Override
+  public Object visitSetExpr(Expr.Set expr) {
+    Object object = evaluate(expr.object);
+
+    if (!(object instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name,
+                             "Only instances have fields");
+    }
+
+    Object value = evaluate(expr.value);
+    ((LoxInstance)object).set(expr.name, value);
+    return value;
+  }
+//-----------------------------------------------------
+  @Override
+  public Object visitThisExpr(Expr.This expr) {
+    return lookUpVariable(expr.keyword, expr);
   }
 //-----------------------------------------------------
   @Override
@@ -427,7 +458,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public LoxFunction visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
-    return new LoxFunction(new Stmt.Function(new Token(LAMBDA_FUN, "lambda-function", null, expr.keyword.line), expr.params, expr.body), environment);
+    return new LoxFunction(new Stmt.Function(new Token(LAMBDA_FUN, "lambda-function", null, expr.keyword.line), expr.params, expr.body), environment, false);
   }
 //-----------------------------------------------------
   @Override

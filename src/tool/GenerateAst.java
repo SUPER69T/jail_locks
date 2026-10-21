@@ -25,6 +25,8 @@ public class GenerateAst {
       "Grouping       : Expr expression",
       "Literal        : Object value",
       "Logical        : Expr left, Token operator, Expr right",
+      "Set            : Expr object, Token name, Expr value",
+       "This          : Token keyword",
       "PrefixUnary    : Token operator, Expr right", // ...postFixUnary is desugared.
       "Variable       : Token name",
       "LambdaFunction : Token keyword, List<Token> params, List<Stmt> body", // params is a list of Identifiers.

@@ -38,7 +38,7 @@ continueStmt   → "continue" ";" ;
 ---------------------------------------------------------------------------
 expression     → comma ;
 comma          → assignment ( "," assignment )*;
-assignment     → IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=") assignment
+assignment     → ( call "." )? IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=") assignment
                | ternary ;
 ternary        → logic_or "?" expression ":" ternary
                | logic_or

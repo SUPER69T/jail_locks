@@ -368,17 +368,28 @@ class Parser {
       Expr value = assignment();
 
       if (expr instanceof Expr.Variable) {
-        Token name = ((Expr.Variable)expr).name;
+        Token name = ((Expr.Variable) expr).name;
 
-        if (equals.type.equals(EQUAL)) {return new Expr.Assign(name, value);}
+        if (equals.type.equals(EQUAL)) {
+          return new Expr.Assign(name, value);
+        }
         // this is my own implementation of the '+=' / '-=' operators:
         //---
-        else if (equals.type.equals(PLUS_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));}
-        else if (equals.type.equals(MINUS_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(MINUS, "-", null, equals.line), value));}
-        else if (equals.type.equals(MUL_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(STAR, "*", null, equals.line), value));}
-        else if (equals.type.equals(DIV_EQUAL)) {return new Expr.Assign(name, new Expr.Binary(expr, new Token(SLASH, "/", null, equals.line), value));}
+        else if (equals.type.equals(PLUS_EQUAL)) {
+          return new Expr.Assign(name, new Expr.Binary(expr, new Token(PLUS, "+", null, equals.line), value));
+        } else if (equals.type.equals(MINUS_EQUAL)) {
+          return new Expr.Assign(name, new Expr.Binary(expr, new Token(MINUS, "-", null, equals.line), value));
+        } else if (equals.type.equals(MUL_EQUAL)) {
+          return new Expr.Assign(name, new Expr.Binary(expr, new Token(STAR, "*", null, equals.line), value));
+        } else if (equals.type.equals(DIV_EQUAL)) {
+          return new Expr.Assign(name, new Expr.Binary(expr, new Token(SLASH, "/", null, equals.line), value));
+        }
         //---
+      } else if (expr instanceof Expr.Get) {
+          Expr.Get get = (Expr.Get) expr;
+          return new Expr.Set(get.object, get.name, value);
       }
+
       error(equals, "Invalid assignment target before the '" + equals.lexeme + "' operator");
     }
 
@@ -586,14 +597,12 @@ class Parser {
     if (match(TRUE)) return new Expr.Literal(true);
     if (match(NIL)) return new Expr.Literal(null);
 
-    if (match(NUMBER, STRING)) {
-      return new Expr.Literal(previous().literal);
-    }
+    if (match(NUMBER, STRING)) return new Expr.Literal(previous().literal);
 
-    //
-    if (match(IDENTIFIER)) {
-      return new Expr.Variable(previous());
-    }
+    if (match(THIS)) return new Expr.This(previous());
+
+    if (match(IDENTIFIER)) return new Expr.Variable(previous());
+
 
     if (match(LEFT_PAREN)) {
       Expr expr = expression();
