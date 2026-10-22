@@ -20,8 +20,10 @@ class LoxFunction implements LoxCallable {
     this.closure = closure;
   }
 
+  /// the method for binding the class-instance's environment (LoxInstance) =>
+  /// to the specific method when it's being called, allowing it to =>
+  /// use 'this' and other class-local variables within it's body.
   LoxFunction bind(LoxInstance instance) {
-    // WARNING: go over this part again:
     Environment environment = new Environment.LocalEnvironment(closure);
     environment.define("this", instance);
     return new LoxFunction(declaration, environment, isInitializer); // =>
@@ -50,11 +52,17 @@ class LoxFunction implements LoxCallable {
     } catch (Return returnValue) {
       // allowing the return of 'this' (a reference to the class-instance) =>
       // on empty 'return'-expressions within the initializer-method.
-      if (isInitializer) return closure.getAt(0, "this");
+
+      // indexed lookup of the 'this'-localVariable, which is simply saved =>
+      // as the first variable ever declared inside a freshly created class- =>
+      // scope, which is why we can look it up using the indexes: 0 for- =>
+      // depth, and 0 for its index:
+      if (isInitializer) return ((Environment.LocalEnvironment)closure).getAt(0, 0);
+
       return returnValue.value;
     }
-
-    if (isInitializer) return closure.getAt(0, "this");
+    if (isInitializer) return ((Environment.LocalEnvironment)closure).getAt(0, 0);
+    //if (isInitializer) return closure.getAt(0, "this");
 
     // default (no return):
     return null;

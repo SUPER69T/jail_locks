@@ -120,8 +120,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
   }
 //-----------------------------------------------------
-  /// tracks the sequence of declaration in the current-(innermost)-scope
-  /// and reports whether the variable has been instantiated, using a flag.
+  /// tracks the sequence of declaration in the current-(innermost)- =>
+  /// scope by saving it with a new index (for index-based lookup during =>
+  /// Runtime), and reports whether the variable has been instantiated.
   private void declare(Token name) {
     if (scopes.isEmpty()) return; // <- if the scopes-stack is empty =>
     // that means we are declaring in the global-scope.
@@ -142,8 +143,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // this index should start at 0, which also matches the number of elements in an empty scope.
   }
 
-  /// updating the flag to 'true', to mimic a properly declared
-  /// variable-statement, after the initializer has been fully-resolved.
+  /// mimicking a fully-declared variable-statement, but only after the =>
+  /// initializer has been fully-resolved (finished the declaration).
   private void define(Token name) {
     if (scopes.isEmpty()) return;
     scopes.peek().get(name.lexeme).defined = true;
@@ -161,7 +162,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitClassStmt(Stmt.Class stmt) {
-    // keeping track of whether we are inside a class for-'this' resolving:
+    // keeping track of the state of when the current scope in within a =>
+    // class, for the 'this'-checker inside the visitThisExpr():
     ClassType enclosingClass = currentClass;
     currentClass = ClassType.CLASS;
     //
@@ -169,13 +171,15 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     define(stmt.name);
 
     beginScope();
-    // WARNING: define as a proper 'VariableState':
-    // be mindful that 'this' should behave as variables shadowing themselves, but =>
-    // should not allow reassignment since they aren't an actual variable, but a =>
-    // pointer to the klass-instance.
-    scopes.peek().put("this", new VariableState(null, null, true));
 
-    // WARNING: is this correct?:
+    // automatically (declare+define)ing a new "this"-Token, for the =>
+    // visitThisExpr() to be able to locally-resolve this variable:
+    Token thisToken = new Token(TokenType.THIS, "this", null, stmt.name.line);
+    declare(thisToken);
+    define(thisToken);
+
+
+    // resolving each one of the class's methods:
     for (Stmt.Function method : stmt.methods) {
       FunctionType declaration = FunctionType.METHOD;
       if (method.name.lexeme.equals("init")) { // =>
@@ -187,7 +191,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     endScope();
 
-    // restoring inside-of-class state for the 'this'-checker:
+    // restoring that state:
     currentClass = enclosingClass;
 
     return null;

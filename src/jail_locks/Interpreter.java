@@ -207,15 +207,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     for (Stmt.Function method : stmt.methods) {
       LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init")); // =>
-      // here is where the 'init()'-method check is done for the =>
-      // 'isInitializer' flag in LoxFunction.
+      // here is where the 'isInitializer' flag in LoxFunction is =>
+      // assigned for "special treatment"...NOTE: change wording...
 
       methods.put(method.name.lexeme, function);
     }
 
     LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
 
-    // WARNING: add assignment for both local and global scopes.
+    // assigning the class in the current-scope, using the
     if (environment instanceof Environment.GlobalEnvironment)
       ((Environment.GlobalEnvironment)environment).assign(stmt.name, klass);
     return null;
@@ -240,6 +240,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Object visitAssignExpr(Expr.Assign expr) {
+    // NOTE: decouple into 2 methods: one for the AssignExpr-visitor, =>
+    // another for assigning both to local and the global environments.
     Object value = evaluate(expr.value);
 
     locationInEnvironment location = locals.get(expr);
@@ -254,6 +256,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     return value;
+  }
+  private void assignVariable() {
+
   }
 //-----------------------------------------------------
   /// fetches a variable's value from the environments-hierarchy:
