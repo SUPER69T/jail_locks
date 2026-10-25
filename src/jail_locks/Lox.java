@@ -111,7 +111,7 @@ public class Lox {
       else hadWarning = false;
     }
 
-// NOTE: run-time starts here..:
+// NOTE: 'RunTime'-time starts here..:
 //---------------------------------------|
     interpreter.interpret(statements); //|
 //---------------------------------------|

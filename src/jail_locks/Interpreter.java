@@ -208,7 +208,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     for (Stmt.Function method : stmt.methods) {
       LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init")); // =>
       // here is where the 'isInitializer' flag in LoxFunction is =>
-      // assigned for "special treatment"...NOTE: change wording...
+      // assigned for special care of the 'init()'-method inside the =>
+      // LoxFunction's execution of the '.call()'-method on a class- =>
+      // initializer method.
 
       methods.put(method.name.lexeme, function);
     }
@@ -240,8 +242,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Object visitAssignExpr(Expr.Assign expr) {
-    // NOTE: decouple into 2 methods: one for the AssignExpr-visitor, =>
-    // another for assigning both to local and the global environments.
+    // "NOTE: decouple into 2 methods: one for the AssignExpr-visitor, =>
+    // another for assigning both to local and the global environments."
+    // FIX: dont think I actually need it.
+
     Object value = evaluate(expr.value);
 
     locationInEnvironment location = locals.get(expr);
@@ -484,7 +488,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     // place inside the 'arguments' block, before the function call =>
     // evaluates, making it a natural decision:
     //---
-    if (!(callee instanceof LoxCallable function)) {
+    if (!(callee instanceof LoxCallable function)) { // both =>
+      // LoxFunction and LoxClass implement the 'LoxCallable'-interface.
       throw new RuntimeError(expr.paren,
           "Can only call functions and classes");
     }
@@ -497,6 +502,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
           arguments.size());
     }
 
+    // after chapter - 12's update, this '.call()' method-call =>
+    // calls both the LoxFunction's and the LoxClass's 'call()'-method:
     return function.call(this, arguments);
   }
 //-----------------------------------------------------

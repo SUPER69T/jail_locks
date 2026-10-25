@@ -53,11 +53,13 @@ class LoxFunction implements LoxCallable {
       // allowing the return of 'this' (a reference to the class-instance) =>
       // on empty 'return'-expressions within the initializer-method.
 
+      // in cases of the 'Return'-calling-method being the 'init()' method, we =>
+      // simply return the 'this'-reference to the class instance itself:
+      if (isInitializer) return ((Environment.LocalEnvironment)closure).getAt(0, 0); // =>
       // indexed lookup of the 'this'-localVariable, which is simply saved =>
       // as the first variable ever declared inside a freshly created class- =>
       // scope, which is why we can look it up using the indexes: 0 for- =>
-      // depth, and 0 for its index:
-      if (isInitializer) return ((Environment.LocalEnvironment)closure).getAt(0, 0);
+      // depth, and 0 for its index.
 
       return returnValue.value;
     }
