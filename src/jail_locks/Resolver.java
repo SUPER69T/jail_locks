@@ -27,6 +27,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     FUNCTION,
     INITIALIZER,
     METHOD,
+    STATIC_METHOD,
     LAMBDA
   }
 
@@ -180,6 +181,8 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
 
     // resolving each one of the class's methods:
+    // METHODS:
+    //---
     for (Stmt.Function method : stmt.methods) {
       FunctionType declaration = FunctionType.METHOD;
       if (method.name.lexeme.equals("init")) { // =>
@@ -188,6 +191,21 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
       }
       resolveFunction(method.params, method.body, declaration);
     }
+    //---
+
+    // STATIC_METHODS:
+    //---
+    for (Stmt.Function method : stmt.staticMethods) {
+      FunctionType declaration = FunctionType.STATIC_METHOD;
+      if (method.name.lexeme.equals("init")) { // =>
+        // decided on fighting back on the ambiguity, and disallow =>
+        // constructor-methods to be declared as static-methods.
+        Lox.error(method.name,
+          "cannot declare the 'init'-constructor as a static-method");
+      }
+      resolveFunction(method.params, method.body, declaration);
+    }
+    //---
 
     endScope();
 

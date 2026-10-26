@@ -130,6 +130,20 @@ abstract class Environment {
     void assignAt(int distance, Integer index, Object value) {
       ancestor(distance).values.set(index, value);
     }
+
+    /// this method is used by 'visitClassStmt' in the 'Interpreter' to
+    /// assign the LoxClass object exactly at the same hierarchical-level
+    /// where it is first defined at the start of the visitor, because the
+    /// original implementation of the indexed-memory system only saves =>
+    /// the depth+index pairs of 'Expr'-nodes in the 'locals'-map, which =>
+    /// is a must for the current Interpreter's Local-'environment' to =>
+    /// know where the variable was assigned.
+    /// <p>
+    /// WARNING: Under no circumstances this method should be used for
+    /// regular 'Expr'-node assignments!
+    void immediateReassignment(Object value) {
+      assignAt(0, values.size()-1, value);
+    }
 //-----------------------------------------------------
   }
 }

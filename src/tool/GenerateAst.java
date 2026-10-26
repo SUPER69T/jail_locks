@@ -36,7 +36,10 @@ public class GenerateAst {
     // generating the 'Stmt' abstract class:
     defineAst(outputDir, "Stmt", Arrays.asList(
       "Block        : List<Stmt> statements, Boolean CreateNestedEnv",
-      "Class        : Token name, List<Stmt.Function> methods",
+      "Class        : Token name, List<Stmt.Function> methods, List<Stmt.Function> staticMethods", // =>
+      // a special field for wrapping abstract-methods, for the "LoxInstance-LoxClass dance" =>
+      // implementation of chapter-12-first-challenge's lookup of both state-bound methods =>
+      // (in the LoxClass), and state-free methods (in the LoxInstance).
       "Expression   : Expr expression",
       "Function     : Token name, List<Token> params, List<Stmt> body", // params is a list of Identifiers.
       "If           : Expr condition, Stmt thenBranch, Stmt elseBranch",

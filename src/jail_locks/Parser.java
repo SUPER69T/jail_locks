@@ -56,16 +56,34 @@ class Parser {
 //-----------------------------------------------------
   private Stmt classDeclaration() {
     Token name = consume(IDENTIFIER, "Expect class name");
+
+    if (check(LEFT_PAREN)) { // this is the production-rule that enforces =>
+      // static-methods from never being declared outside a class's body.
+      throw error(peek(),"cannot declare static-methods outside of a class's body");
+    }
+
     consume(LEFT_BRACE, "Expect '{' before class body");
 
     List<Stmt.Function> methods = new ArrayList<>();
+    List<Stmt.Function> staticMethods = new ArrayList<>();
+
     while (!check(RIGHT_BRACE) && !isAtEnd()) {
-      methods.add(function("method"));
+      if (match(CLASS)) { // the parser coming into this clause, means =>
+        // it detected an src-sequence like: "class name1 { class..." =>
+        // matching the ambiguity of declaring classes and static-methods =>
+        // with that same 'CLASS'-Token recycled.
+        staticMethods.add(function("method")); // felt like the =>
+        // 'kind' should stay "method" cause the 'kind' of the method =>
+        // makes minimal difference in the error messages where it is used.
+
+      } else {
+        methods.add(function("method"));
+      }
     }
 
     consume(RIGHT_BRACE, "Expect '}' after class body");
 
-    return new Stmt.Class(name, methods);
+    return new Stmt.Class(name, methods, staticMethods);
   }
 //-----------------------------------------------------
   private Stmt.Function function(String kind) {
@@ -89,7 +107,7 @@ class Parser {
     }
     consume(RIGHT_PAREN, "Expect ')' after parameters");
 
-    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body");
     List<Stmt> body = block();
     return new FunctionParamsBodyPAIR(parameters, body);
   }

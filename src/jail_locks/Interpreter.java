@@ -22,8 +22,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   //  never be null, which is why checking for the nullity of the =>
   //  entire record is as safe as checking each of the entries.
   record locationInEnvironment(Integer depth, Integer index) {}
-  private final Map<Expr, locationInEnvironment> locals = new HashMap<>();
-  //
+  private final Map<Expr, locationInEnvironment> locals = new HashMap<>(); // =>
+  // a deeper dive into the mechanics and reasoning behind using 'Expr' =>
+  // as the map-keys can be found in:
+  // 'DESIGN NOTES' - 'LoxFunction, LoxClass in locals-map'.
 
   private final boolean isRepl;
 
@@ -101,7 +103,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     // that implements: constructor (dah), arity(), call(), toString():
     LoxFunction function = new LoxFunction(stmt, environment, false);
 
-    // saving that function object in the current environment:
+    // saving the LoxFunction object in the current environment:
     environment.define(stmt.name.lexeme, function); // 'name' is the IDENTIFIER
     return null;
   }
@@ -191,6 +193,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitBlockStmt(Stmt.Block stmt) {
     if (stmt.CreateNestedEnv) {
+      // this is where we create the virtually-'nesting' behavior of the =>
+      // local-environment-closures, by declaring new 'LocalEnvironment's =>
+      // and linking them back to their closures for the 'ancestor()'- =>
+      // -method inside 'LocalEnvironment' to accurately look up this =>
+      // hierarchical nesting behavior:
       executeBlock(stmt.statements, new Environment.LocalEnvironment(environment));
     }
     else {
@@ -202,10 +209,35 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitClassStmt(Stmt.Class stmt) {
+    // saving a dummy placeholder in the current environment to allow =>
+    // referencing of the class-name itself within the class's own body.
+    // this is done before the LoxClass-objects have been instantiated =>
+    // and is an important distinction to notice that this step is only =>
+    // the interpretation of the 'Stmt.Class'-node, not its usage later on:
     environment.define(stmt.name.lexeme, null);
+
+    Map<String, LoxFunction> staticMethods = construct_LoxFunctions(stmt.staticMethods);
+    Map<String, LoxFunction> methods = construct_LoxFunctions(stmt.methods);
+
+    LoxClass metaKlass = new LoxClass(null, stmt.name.lexeme + "MetaKls", staticMethods);
+    LoxClass klass = new LoxClass(metaKlass, stmt.name.lexeme, methods);
+
+    // reassigning the LoxClass object in that dummy placeholder:
+    if (environment instanceof Environment.LocalEnvironment)
+      ((Environment.LocalEnvironment)environment).immediateReassignment(klass);
+    else {
+      ((Environment.GlobalEnvironment) environment).assign(stmt.name, klass);
+    }
+
+    return null;
+  }
+
+  /// a helper-class for initializing 'LoxFunction'-instances out of =>
+  /// 'Stmt.Function'-AST-nodes:
+  private Map<String, LoxFunction> construct_LoxFunctions( List<Stmt.Function> functions) {
     Map<String, LoxFunction> methods = new HashMap<>();
 
-    for (Stmt.Function method : stmt.methods) {
+    for (Stmt.Function method : functions) {
       LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init")); // =>
       // here is where the 'isInitializer' flag in LoxFunction is =>
       // assigned for special care of the 'init()'-method inside the =>
@@ -214,15 +246,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
       methods.put(method.name.lexeme, function);
     }
-
-    LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
-
-    // assigning the class in the current-scope, using the
-    if (environment instanceof Environment.GlobalEnvironment)
-      ((Environment.GlobalEnvironment)environment).assign(stmt.name, klass);
-    return null;
+    return methods;
   }
-//-----------------------------------------------------
+
+  //-----------------------------------------------------
   void executeBlock(List<Stmt> statements, Environment environment) {
     Environment previous = this.environment;
     try {
@@ -242,10 +269,6 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Object visitAssignExpr(Expr.Assign expr) {
-    // "NOTE: decouple into 2 methods: one for the AssignExpr-visitor, =>
-    // another for assigning both to local and the global environments."
-    // FIX: dont think I actually need it.
-
     Object value = evaluate(expr.value);
 
     locationInEnvironment location = locals.get(expr);
@@ -260,9 +283,6 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     return value;
-  }
-  private void assignVariable() {
-
   }
 //-----------------------------------------------------
   /// fetches a variable's value from the environments-hierarchy:
@@ -285,7 +305,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     // the global scope if a variable isn't found in the scopes-stack.
     return globals.get(name); // =>
     // a variable that hasn't been declared at all will fall through =>
-    // into the 'Environment's .get() methods, which will throw the =>
+    // within the 'Environment's .get() methods, which will throw the =>
     // corresponding "Undefined variable..." RuntimeError.
   }
 //-----------------------------------------------------
