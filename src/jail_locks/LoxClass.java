@@ -3,11 +3,22 @@ package jail_locks;
 import java.util.List;
 import java.util.Map;
 
-class LoxClass implements LoxCallable {
+class LoxClass extends LoxInstance implements LoxCallable {
   final String name;
   private final Map<String, LoxFunction> methods;
 
-  LoxClass(String name, Map<String, LoxFunction> methods) {
+  LoxClass(LoxClass metaKlass, String name, Map<String, LoxFunction> methods) {
+    super(metaKlass); // 'metaKlass' was the idea behind OOP-heavy =>
+    // languages such as smalltalk and ruby, which robert was hinting =>
+    // at for the implementation of static-methods in chapter-12's =>
+    // first challenge, which include a separation of responsibility =>
+    // for when it comes to the exact 'LoxClass' that should hold the =>
+    // two types of methods: instance-methods/static-methods, into two =>
+    // distinct (yet, interleaved) class's, each holding its own =>
+    // method-type, instead of forcing the same LoxClass to take care =>
+    // of both types, which drastically complicate the current =>
+    // 'LoxClass'-implementation, and violates the SoC - principle.
+
     this.name = name;
     this.methods = methods;
   }
