@@ -100,7 +100,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitFunctionStmt(Stmt.Function stmt) {
     // conversion of the Stmt.Function to a full LoxFunction-object:
-    LoxFunction function = new LoxFunction(stmt, environment, false);
+    LoxFunction function = new LoxFunction(stmt, environment, false, stmt.isGetter);
 
     // saving the LoxFunction object in the current environment:
     environment.define(stmt.name.lexeme, function); // 'name' is the IDENTIFIER
@@ -237,11 +237,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Map<String, LoxFunction> methods = new HashMap<>();
 
     for (Stmt.Function method : functions) {
-      LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init")); // =>
+      LoxFunction function = new LoxFunction(method, environment, method.name.lexeme.equals("init"), method.isGetter); // =>
       // here is where the 'isInitializer' flag in LoxFunction is =>
       // assigned for special care of the 'init()'-method inside the =>
       // LoxFunction's execution of the '.call()'-method on a class- =>
       // initializer method.
+      // NOTE: the 'Parser' makes the check already to enforce that =>
+      // method by the name of "init" will be able to be declared as =>
+      // a getter-method, so we don't have to worry about this edge- =>
+      // -case in here.
 
       methods.put(method.name.lexeme, function);
     }
@@ -332,7 +336,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     if (!(object instanceof LoxInstance)) {
       throw new RuntimeError(expr.name,
-                             "Only instances have fields");
+          "only instances have fields");
     }
 
     Object value = evaluate(expr.value);
@@ -486,7 +490,22 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public LoxFunction visitLambdaFunctionExpr(Expr.LambdaFunction expr) {
-    return new LoxFunction(new Stmt.Function(new Token(LAMBDA_FUN, "lambda-function", null, expr.keyword.line), expr.params, expr.body), environment, false);
+    return new LoxFunction(
+            new Stmt.Function(
+                    new Token(
+                            LAMBDA_FUN,
+                            "lambda-function",
+                            null,
+                            expr.keyword.line)
+                    ,
+                    expr.params,
+                    expr.body,
+                    false)
+            ,
+            environment,
+            false, // lambdas can't be an initializer-method.
+            false); // nor they can be a getter-method.
+    // it's really sad how limited are the options of OOP's lambdas :(...
   }
 //-----------------------------------------------------
   @Override
@@ -529,12 +548,21 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Object visitGetExpr(Expr.Get expr) {
     Object object = evaluate(expr.object);
-    if (object instanceof LoxInstance) {
-      return ((LoxInstance) object).get(expr.name);
+    if (object instanceof LoxInstance instance) { // making sure we make Lox's =>
+      // 'get'-call on a valid class-instance.
+
+      Object field = instance.get(expr.name);
+
+      if (field instanceof LoxFunction method) {
+        if (method.isGetter) {
+          return method.call(this, new ArrayList<>());
+        }
+      }
+       return field;
     }
 
     throw new RuntimeError(expr.name,
-        "Only instances have properties");
+        "only instances can have properties");
   }
 //-----------------------------------------------------
   @Override
@@ -573,6 +601,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
       return text;
     }
 
+    // this is responsible for the special toString() printing on =>
+    // Lox-defined objects such as LoxFunction/LoxClass..:
     return object.toString();
   }
 

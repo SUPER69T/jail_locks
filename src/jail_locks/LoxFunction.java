@@ -6,6 +6,8 @@ class LoxFunction implements LoxCallable {
   private final boolean isInitializer; // used to signify that the =>
   // LoxFunction is an initializer ('init()')-function.
 
+  protected final boolean isGetter;
+
   private final Stmt.Function declaration;
   private final Environment closure; // =>
   // the 'Resolver' did resolve every single one of a function's =>
@@ -14,8 +16,9 @@ class LoxFunction implements LoxCallable {
 
 
   // constructor:
-  LoxFunction(Stmt.Function declaration, Environment closure, boolean isInitializer) {
+  LoxFunction(Stmt.Function declaration, Environment closure, boolean isInitializer, boolean isGetter) {
     this.isInitializer = isInitializer;
+    this.isGetter = isGetter;
     this.declaration = declaration;
     this.closure = closure;
   }
@@ -26,7 +29,7 @@ class LoxFunction implements LoxCallable {
   LoxFunction bind(LoxInstance instance) {
     Environment environment = new Environment.LocalEnvironment(closure);
     environment.define("this", instance);
-    return new LoxFunction(declaration, environment, isInitializer); // =>
+    return new LoxFunction(declaration, environment, isInitializer, isGetter); // =>
     // passing the same 'isInitializer' value into the new, now bounded =>
     // LoxFunction.
   }
@@ -72,6 +75,6 @@ class LoxFunction implements LoxCallable {
 
   @Override
   public String toString() {
-    return "<fn " + declaration.name.lexeme + ">";
+    return "'" + declaration.name.lexeme + "' - function.";
   }
 }

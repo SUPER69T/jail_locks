@@ -22,7 +22,7 @@ class Parser {
     this.tokens = tokens;
   }
 
-  record FunctionParamsBodyPAIR (List<Token> params, List<Stmt> body) {} // =>
+  record FunctionParamsBodyisGetterTRIPLET (List<Token> params, List<Stmt> body, boolean isGetter) {} // =>
   // this record is used by the finishFunction() helper method, for =>
   // constructing both functions, methods, and lambda-functions.
 
@@ -42,7 +42,8 @@ class Parser {
   private Stmt declaration() {
     try {
       if (match(CLASS)) return classDeclaration();
-      if (check(FUN) && checkNext(IDENTIFIER)){
+      if (check(FUN) && checkNext(IDENTIFIER)){ // ensuring the next =>
+        // Token is an IDENTIFIER, allows the declaration of lambda-func.
         advance();
         return function("function");
       }
@@ -88,28 +89,57 @@ class Parser {
 //-----------------------------------------------------
   private Stmt.Function function(String kind) {
     Token name = consume(IDENTIFIER, "Expect " + kind + " name");
-    FunctionParamsBodyPAIR paramsANDbodyPAIR = finishFunction(kind);
-    return new Stmt.Function(name, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body);
+    FunctionParamsBodyisGetterTRIPLET paramsANDbodyPAIR = finishFunction(kind, name);
+    return new Stmt.Function(name, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body, paramsANDbodyPAIR.isGetter);
   }
-  /// this one helper is used by both function() and lambdaFunction() production-rules.
-  private FunctionParamsBodyPAIR finishFunction(String kind) {
-        consume(LEFT_PAREN, "Expect '(' after " + kind + " name");
-    List<Token> parameters = new ArrayList<>();
-    if (!check(RIGHT_PAREN)) {
-      do {
-        if (parameters.size() >= 255) {
-          error(peek(), "Can't have more than 255 parameters");
-        }
 
-        parameters.add(
-            consume(IDENTIFIER, "Expect parameter name"));
-      } while (match(COMMA));
+  /// this one helper is used by both function() and lambdaFunction() production-rules.
+  private FunctionParamsBodyisGetterTRIPLET finishFunction(String kind, Token name) {
+    List<Token> parameters = new ArrayList<>();
+    boolean isGetter = false;
+
+    if (check(LEFT_BRACE)) { // =>
+      if (!kind.equals("lambda-function")) {
+        // if we immediately encounter a left-brace right after parsing =>
+        // the method-IDENTIFIER, we will assume that it's the parsing =>
+        // of a Getter-method we are dealing with, in which case, we =>
+        // should update the Stmt.Function's isGetter-flag, to signal =>
+        // the Interpreter that it should be executed before returned.
+        // NOTE: so far lambda-functions are the only kind of function =>
+        // that Lox shouldn't allow to be declared as class-getters.
+        // even static-methods can be declared as getters.
+        if (!name.lexeme.equals("init")) {
+          isGetter = true;
+        } else {
+          // NOTE: nvm on the last note, I decided on disallowing the =>
+          // "init"-constructor-method from being declared as a getter- =>
+          // -method for good. the less ambiguity I allow to keep in =>
+          // the dynamic implementation of the jlox language, the less =>
+          // prone for bugs it will become.
+          throw error(peek(),
+"constructor-'init'-methods cannot be declared as getter-methods in Lox");
+        }
+      } else { throw error(peek(),
+"lambda-functions cannot be declared as getter-methods in Lox");
+      }
+    } else {
+      consume(LEFT_PAREN, "Expect '(' after " + kind + " name");
+      if (!check(RIGHT_PAREN)) {
+        do {
+          if (parameters.size() >= 255) {
+            error(peek(), "Can't have more than 255 parameters");
+          }
+
+          parameters.add(
+                  consume(IDENTIFIER, "Expect parameter name"));
+        } while (match(COMMA));
+      }
+      consume(RIGHT_PAREN, "Expect ')' after parameters");
     }
-    consume(RIGHT_PAREN, "Expect ')' after parameters");
 
     consume(LEFT_BRACE, "Expect '{' before " + kind + " body");
     List<Stmt> body = block();
-    return new FunctionParamsBodyPAIR(parameters, body);
+    return new FunctionParamsBodyisGetterTRIPLET(parameters, body, isGetter);
   }
 
 //  NOTE: THIS IS PART OF BUILDING THE DEFAULT-PARAMETERS FEATURE.
@@ -220,7 +250,9 @@ class Parser {
               } case LEFT_BRACE -> {
                   advance();
                   yield new Stmt.Block(block(), true);
-                } case EXIT -> {
+                } case EXIT, QUIT -> { // desugaring the 'QUIT'-Token to =>
+                  // perform the same action as the Lox-'exit'-statement, =>
+                  // by too- constructing and returning a Stmt.Exit-AST-node:
                     advance();
                     yield new Stmt.Exit();
                   } case BREAK, CONTINUE -> {
@@ -553,8 +585,8 @@ class Parser {
   }
 //-----------------------------------------------------
   private Expr call() {
-    Expr expr = lambdaFunction(); // to parse a valid function, the given =>
-    // 'expr' should be a Token of type: 'IDENTIFIER'.
+    Expr expr = lambdaFunction(); // to parse a valid function, the =>
+    // given 'expr' should be a Token of type: 'IDENTIFIER'.
 
     while (true) {
       if (match(LEFT_PAREN)) {
@@ -594,17 +626,16 @@ class Parser {
       // RuntimeError with a massage like "Expected 2 arguments but got 1".
     }
 
-    Token paren = consume(RIGHT_PAREN,
-                          "Expect ')' after arguments");
-// for that bound by the environment to =>
-    // a function, or a method  (classes that implement LoxCallable).
+    Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments");
+
+
     return new Expr.Call(callee, paren, arguments);
   }
 //-----------------------------------------------------
   private Expr lambdaFunction() {
     if (match(FUN)) {
       Token keyword = previous();
-      FunctionParamsBodyPAIR paramsANDbodyPAIR = finishFunction("lambda-function");
+      FunctionParamsBodyisGetterTRIPLET paramsANDbodyPAIR = finishFunction("lambda-function", keyword);
       return new Expr.LambdaFunction(keyword, paramsANDbodyPAIR.params, paramsANDbodyPAIR.body);
     }
     return primary();
@@ -783,16 +814,43 @@ class Parser {
     while (!isAtEnd()) {
       if (previous().type == SEMICOLON) return;
 
+      // NOTE: renting about the types of valid error-recovery anchors:
+      //---------------------------------------------------------------------
+      // something that I only noticed much later is the presence of the =>
+      // separation of concerns between the Parser's syntactic checks =>
+      // and the Resolver's semantic checks, even in this synchronize()- =>
+      // method itself, with the types of IDENTIFIERS we choose as valid =>
+      // anchor-points to recovery from panic-mode errors and avoidance of =>
+      // cascading errors, is the level of abstraction, which is expressed =>
+      // here by the size of the concern of the recovery itself.
+      // what I'm talking about is the choice to use recovery-anchors such =>
+      // as Lox's statement-IDENTIFIERS, which are responsible to a much =>
+      // narrower sequence of input than checking an entire scoped-body, =>
+      // which could be the case for analysing correct bracket closures in =>
+      // the 'Resolver', but rather focusing on recovery on the level of =>
+      // each line/expression/statement for itself...
+      // which makes sense, and explains why the usage of IDENTIFIERS such =>
+      // as the 'RETURN'-Token is a valid anchor, being that it represents =>
+      // the start of a statement, and a valid parsing-rule in the Parser, =>
+      // even though we would always expect it to be found within a larger =>
+      // expression such as a function's body, which I could only guess =>
+      // could be used for extra error-recovery-unwinding for larger rules =>
+      // that belong to the 'Resolver'...
+      //---------------------------------------------------------------------
+
       switch (peek().type) {
         case CLASS:
         case FUN:
-        case VAR:
-        case FOR:
-        case IF:
-        case WHILE:
-        case PRINT:
         case RETURN:
+        case VAR:
+        case WHILE:
+        case FOR:
+        case BREAK:
+        case CONTINUE:
+        case IF:
+        case PRINT:
         case EXIT:
+        case QUIT:
           return;
       }
 

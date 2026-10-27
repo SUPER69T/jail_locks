@@ -121,8 +121,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     Map<String, VariableState> popped_scope = scopes.pop();
     for (Map.Entry<String, VariableState> entry : popped_scope.entrySet()) {
       VariableState state = entry.getValue();
-      if (!state.used) {
-        Lox.warning(state.token, "Local variable '" + entry.getKey() + "' is never used");
+      String variableName = entry.getKey();
+
+      if (!state.used && !variableName.equals("this")) { // =>
+        // NOTE: avoiding reporting the non-use of the implicitly- =>
+        // -declare "this"-variable inside a class's scope.
+        Lox.warning(state.token, "Local variable '" + variableName + "' is never used");
       }
     }
   }

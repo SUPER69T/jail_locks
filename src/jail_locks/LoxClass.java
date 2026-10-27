@@ -59,6 +59,6 @@ class LoxClass extends LoxInstance implements LoxCallable {
 
   @Override
   public String toString() {
-    return name;
+    return "'" + name + "' - class.";
   }
 }

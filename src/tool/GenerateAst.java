@@ -41,7 +41,7 @@ public class GenerateAst {
       // implementation of chapter-12-first-challenge's lookup of both state-bound methods =>
       // (in the LoxClass), and state-free methods (in the LoxInstance).
       "Expression   : Expr expression",
-      "Function     : Token name, List<Token> params, List<Stmt> body", // params is a list of Identifiers.
+      "Function     : Token name, List<Token> params, List<Stmt> body, boolean isGetter", // params is a list of Identifiers.
       "If           : Expr condition, Stmt thenBranch, Stmt elseBranch",
       "Print        : Expr expression",
       "Return       : Token keyword, Expr value",
