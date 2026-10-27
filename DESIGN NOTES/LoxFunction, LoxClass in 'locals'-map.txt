@@ -1,0 +1,44 @@
+a special thingy to notice about how the 'locals'-map is declared is how it =>
+only uses Lox's 'Expr'-nodes as map-keys:
+'Map<!~Expr~!, locationInEnvironment> locals',
+so the assignment and fetching operations inside Lox's LocalEnvironments =>
+doesn't bother natively supporting memory operations for both: =>
+('Expr'/'Stmt'), which makes sense because statements (by definition) don't =>
+return a meaningful value after being executed...
+that raises the question of why do we even bother supporting these memory- =>
+operations for the Stmt.(Function/Class)-statements, and it comes down to =>
+the way we use these special statements for assignment, and self-referencing.
+for example:
+1. supporting function/method assignment to a local variable, by the name =>
+the function/method was assigned by (using that special variable linking =>
+property Environments give to any "variable" defined within them),
+essentially treating all functions (even Stmt.(Function/Class)-statements) =>
+as expressions defined within a scoped environments.
+2. enabling recursive (function/method) calls, and recursive class- =>
+declarations, within the (function/method/class)'s bodies themselves, using =>
+the same identifier they were defined as in the scope.
+
+these two Lox-statement types turning into "expressions" around the time =>
+when the AST starts traversing the 'Resolver'/'Interpreter' is a special =>
+property, which requires that special care inside both the 'Resolver'/ - =>
+'Interpreter'-sections... a property most other statements don't have, =>
+which is why the need for hashing the 'locals'-map's keys using a =>
+combination of both Lox's (Expr/Stmt)-AST-nodes is unnecessary and avoidable.
+
+in technical detail:
+the way these two special statements are being indexed for the calculation =>
+of the (depth+index) pair, which later the Interpreter uses to look them =>
+up as variables in the LocalEnvironment-memory-system, is similar to the =>
+(declaration+definition) calls any regular 'Expr'-nodes in the 'Resolver' =>
+stage itself. doing so for the IDENTIFIER's names of any occurrence of the =>
+Stmt.(Function/Class)s allows for the later calculations of indexing- =>
+distances between variable declaration and variable usage to take place =>
+inside the Resolver's: resolveLocal()-method.
+
+
+that's it, I finally articulated this concept of implementation accurately =>
+enough to be satisfied with both trying to convey the idea using an =>
+appropriate level of intuition, while both maintaining enough rigor to =>
+justify the well-defined decisions I had to make and the complexity and =>
+nuance of going either way  in trying to navigate this problem.
+omg I started talking like robert... that's enough english for one day.

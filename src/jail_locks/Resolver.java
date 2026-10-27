@@ -87,7 +87,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   /// called/used, to the place where they were declared, and saving that
   /// distance in the interpreter class, for it to fetch/assign without the
   /// need to recalculate that distance or recursively look it up at runtime.
-  /// NOTE: the 'index' is calculated once at variable-declaration inside
+  /// NOTE: the 'index' is calculated at the time of variable-declaration.
   private void resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
       Map<String, VariableState> scope = scopes.get(i);
@@ -95,7 +95,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
       if (state != null) {
         // saving the scope depth and the pre-declared index for the interpreter:
-        interpreter.resolve(expr, scopes.size() - 1 - i, state.index);
+        interpreter.resolve(expr, scopes.size() - 1 - i, state.index); // =>
+        // depth: "scoped-distance" between variable usage and declaration.
+        // index: position in the sequence of declarations in the scope =>
+        // where the declared variable is declared at (what a mouthful...=>
+        // the class's description explains this better, and I just made =>
+        // it sound extra repetitive, just like:
+        // "https://en.wikipedia.org/wiki/Metaclass", careful: I warned you..).
 
         // marking the variable as used:
         state.used = true;

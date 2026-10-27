@@ -25,7 +25,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   private final Map<Expr, locationInEnvironment> locals = new HashMap<>(); // =>
   // a deeper dive into the mechanics and reasoning behind using 'Expr' =>
   // as the map-keys can be found in:
-  // 'DESIGN NOTES' - 'LoxFunction, LoxClass in locals-map'.
+  // 'DESIGN NOTES' - 'LoxFunction, LoxClass in 'locals'-map'.
 
   private final boolean isRepl;
 
@@ -99,8 +99,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 //-----------------------------------------------------
   @Override
   public Void visitFunctionStmt(Stmt.Function stmt) {
-    // conversion of the Stmt.Function to a full LoxFunction-object =>
-    // that implements: constructor (dah), arity(), call(), toString():
+    // conversion of the Stmt.Function to a full LoxFunction-object:
     LoxFunction function = new LoxFunction(stmt, environment, false);
 
     // saving the LoxFunction object in the current environment:
